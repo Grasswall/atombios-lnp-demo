@@ -8,384 +8,189 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  background: #0d1117;
-  color: #fff;
-  overflow-x: hidden;
-  overscroll-behavior: none;
+  background: #0d1117; color: #fff;
+  overflow-x: hidden; overscroll-behavior: none;
 }
 
-/* Scroll container — each section is 100vh */
-.level {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 40px 24px;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+.section {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; padding: 40px 20px;
+  opacity: 0; transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
 }
-.level.visible {
-  opacity: 1;
-  transform: translateY(0);
+.section.visible { opacity: 1; transform: translateY(0); }
+.section.intro { opacity: 1; transform: none; }
+
+/* 3D viewport per level */
+.model-viewport {
+  width: 280px; height: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  background: radial-gradient(ellipse at center, #161b22 0%, #0d1117 100%);
+  box-shadow: 0 0 40px rgba(0,212,255,0.05);
+}
+.model-viewport canvas { width: 100% !important; height: 100% !important; }
+
+.label { text-align: center; max-width: 340px; }
+.label .name { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.label .size {
+  font-size: 38px; font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+}
+.label .desc { font-size: 13px; color: #888; line-height: 1.6; }
+
+.zoom-badge {
+  position: absolute; bottom: 24px;
+  padding: 6px 18px; border-radius: 20px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.25);
+  font-size: 12px; color: #00d4ff;
 }
 
 /* Intro */
-.intro {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 40px 24px;
-}
-.intro h1 {
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin-bottom: 12px;
-}
+.intro h1 { font-size: 30px; font-weight: 700; text-align: center; margin-bottom: 12px; }
 .intro h1 span {
   background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.intro p {
-  font-size: 16px;
-  color: #888;
-  max-width: 320px;
-  line-height: 1.6;
+.intro p { font-size: 15px; color: #888; text-align: center; max-width: 320px; line-height: 1.6; }
+.scroll-cue {
+  position: absolute; bottom: 32px;
+  font-size: 13px; color: #444;
+  animation: bob 2s infinite;
 }
-.scroll-hint {
-  position: absolute;
-  bottom: 40px;
-  font-size: 13px;
-  color: #555;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(5px); }
+@keyframes bob {
+  0%,100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(6px); opacity: 1; }
 }
 
-/* Level content */
-.level-visual {
-  width: 200px;
-  height: 200px;
-  margin-bottom: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.level-label {
-  text-align: center;
-}
-.level-label .name {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.level-label .size-value {
-  font-size: 36px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-}
-.level-label .description {
-  font-size: 14px;
-  color: #888;
-  max-width: 300px;
-  line-height: 1.5;
-  margin: 0 auto;
-}
-
-/* Scale bar between levels */
-.zoom-indicator {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 16px;
-  border-radius: 20px;
-  background: rgba(0,212,255,0.1);
-  border: 1px solid rgba(0,212,255,0.3);
-  font-size: 12px;
-  color: #00d4ff;
-  font-weight: 500;
-}
-
-/* SVG illustrations */
-.level-visual svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* The LNP reveal */
-.lnp-level {
-  height: 100vh;
-  position: relative;
-  overflow: hidden;
-}
-#lnp-canvas {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  inset: 0;
+/* LNP reveal */
+.lnp-section { min-height: 100vh; position: relative; }
+.lnp-section .model-viewport {
+  width: 100%; height: 100vh;
+  border-radius: 0; position: absolute; inset: 0;
 }
 .lnp-overlay {
-  position: absolute;
-  bottom: 60px;
-  left: 0; right: 0;
-  text-align: center;
-  z-index: 10;
-  padding: 0 24px;
+  position: relative; z-index: 10;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  min-height: 100vh; padding-bottom: 60px; text-align: center;
 }
-.lnp-overlay .tagline {
-  font-size: 14px;
-  color: #00d4ff;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
+.lnp-overlay .tag {
+  font-size: 12px; color: #00d4ff;
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px;
 }
-.lnp-overlay h2 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.lnp-overlay p {
-  font-size: 14px;
-  color: #888;
-  max-width: 360px;
-  margin: 0 auto;
-  line-height: 1.5;
-}
+.lnp-overlay h2 { font-size: 32px; font-weight: 700; margin-bottom: 10px; }
+.lnp-overlay p { font-size: 14px; color: #888; max-width: 340px; line-height: 1.6; }
 
-/* Progress bar */
-.progress-track {
-  position: fixed;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 120px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 2px;
-  z-index: 200;
-}
-.progress-fill {
-  width: 100%;
-  background: linear-gradient(to bottom, #00d4ff, #7b2ff7);
-  border-radius: 2px;
-  transition: height 0.3s;
-}
-.progress-dots {
-  position: fixed;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  z-index: 201;
-}
-.progress-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  transition: all 0.3s;
-}
-.progress-dot.active {
-  background: #00d4ff;
-  box-shadow: 0 0 8px #00d4ff;
-}
-
-/* Footer CTA */
+/* Footer */
 .footer {
-  height: 50vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 40px 24px;
+  min-height: 40vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 40px 24px;
 }
-.footer h2 {
-  font-size: 24px;
-  margin-bottom: 12px;
+.footer h2 { font-size: 22px; margin-bottom: 10px; }
+.footer p { font-size: 13px; color: #888; max-width: 300px; line-height: 1.6; }
+.footer .brand { margin-top: 20px; font-size: 11px; color: #444; letter-spacing: 4px; text-transform: uppercase; }
+
+/* Progress */
+.progress {
+  position: fixed; right: 14px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 14px; z-index: 200;
 }
-.footer p {
-  font-size: 14px;
-  color: #888;
-  max-width: 320px;
-  line-height: 1.6;
+.pdot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); transition: all 0.3s;
 }
-.footer .brand {
-  margin-top: 24px;
-  font-size: 12px;
-  color: #555;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
+.pdot.on { background: #00d4ff; box-shadow: 0 0 6px #00d4ff; }
 </style>
 </head>
 <body>
 
-<!-- Progress dots -->
-<div class="progress-dots" id="progress-dots">
-  <div class="progress-dot active"></div>
-  <div class="progress-dot"></div>
-  <div class="progress-dot"></div>
-  <div class="progress-dot"></div>
-  <div class="progress-dot"></div>
-  <div class="progress-dot"></div>
-</div>
+<div class="progress" id="progress"></div>
 
 <!-- Intro -->
-<section class="intro" id="intro">
+<section class="section intro visible" data-idx="0">
   <h1>How small is <span>20 nanometres</span>?</h1>
-  <p>Scroll to zoom from the visible world into the nanoscale — where our drug delivery system operates.</p>
-  <div class="scroll-hint">↓ Scroll to begin</div>
+  <p>Scroll to zoom from the everyday world down to our drug delivery nanoparticle.</p>
+  <div class="scroll-cue">↓ Swipe to begin</div>
 </section>
 
 <!-- Level 1: Grain of Sand -->
-<section class="level" data-level="1">
-  <div class="level-visual">
-    <svg viewBox="0 0 200 200" fill="none">
-      <!-- Irregular sand grain shape -->
-      <path d="M100 30 L140 50 L160 90 L155 130 L130 160 L90 170 L55 150 L40 110 L45 70 L70 40 Z" 
-            fill="#c4a35a" opacity="0.7" stroke="#d4b36a" stroke-width="1"/>
-      <path d="M100 40 L130 55 L145 85 L142 118 L122 142 L92 150 L65 135 L54 105 L58 75 L78 50 Z" 
-            fill="#d4b870" opacity="0.5"/>
-      <!-- Surface texture dots -->
-      <circle cx="85" cy="80" r="2" fill="#b89940" opacity="0.5"/>
-      <circle cx="110" cy="100" r="1.5" fill="#b89940" opacity="0.5"/>
-      <circle cx="95" cy="120" r="2.5" fill="#b89940" opacity="0.4"/>
-      <circle cx="120" cy="75" r="1.8" fill="#b89940" opacity="0.4"/>
-    </svg>
-  </div>
-  <div class="level-label">
+<section class="section" data-idx="1">
+  <div class="model-viewport" id="vp-sand"></div>
+  <div class="label">
     <div class="name">Grain of Sand</div>
-    <div class="size-value">500,000 nm</div>
-    <div class="description">Barely visible to the naked eye. You can just about pick it up between two fingers.</div>
+    <div class="size">500 µm</div>
+    <div class="desc">The smallest thing you can pick up with your fingers. Already barely visible.</div>
   </div>
-  <div class="zoom-indicator">Zoom in 6×&ensp;↓</div>
+  <div class="zoom-badge">Zoom in 6×&ensp;↓</div>
 </section>
 
 <!-- Level 2: Human Hair -->
-<section class="level" data-level="2">
-  <div class="level-visual">
-    <svg viewBox="0 0 200 200" fill="none">
-      <!-- Hair cross-section -->
-      <ellipse cx="100" cy="100" rx="70" ry="70" fill="#8b6914" opacity="0.3" stroke="#c49a1a" stroke-width="1.5"/>
-      <ellipse cx="100" cy="100" rx="55" ry="55" fill="#a07818" opacity="0.25"/>
-      <!-- Medulla (center) -->
-      <ellipse cx="100" cy="100" rx="20" ry="20" fill="#5c4010" opacity="0.5" stroke="#7a5518" stroke-width="1"/>
-      <!-- Cortex pattern -->
-      <ellipse cx="100" cy="100" rx="38" ry="38" fill="none" stroke="#9a7020" stroke-width="0.5" stroke-dasharray="3 2"/>
-      <!-- Cuticle layers (outer rings) -->
-      <ellipse cx="100" cy="100" rx="62" ry="62" fill="none" stroke="#c49a1a" stroke-width="0.5" opacity="0.6"/>
-      <ellipse cx="100" cy="100" rx="66" ry="66" fill="none" stroke="#c49a1a" stroke-width="0.5" opacity="0.4"/>
-      <!-- Label lines -->
-      <line x1="140" y1="60" x2="165" y2="45" stroke="#888" stroke-width="0.5"/>
-      <text x="167" y="48" font-size="7" fill="#888">Cuticle</text>
-      <line x1="130" y1="85" x2="160" y2="78" stroke="#888" stroke-width="0.5"/>
-      <text x="162" y="81" font-size="7" fill="#888">Cortex</text>
-      <line x1="115" y1="100" x2="155" y2="108" stroke="#888" stroke-width="0.5"/>
-      <text x="157" y="111" font-size="7" fill="#888">Medulla</text>
-    </svg>
-  </div>
-  <div class="level-label">
+<section class="section" data-idx="2">
+  <div class="model-viewport" id="vp-hair"></div>
+  <div class="label">
     <div class="name">Human Hair (cross-section)</div>
-    <div class="size-value">80,000 nm</div>
-    <div class="description">A single strand, sliced across. Already invisible detail — you'd need a microscope to see this structure.</div>
+    <div class="size">80 µm</div>
+    <div class="desc">Cut a single strand in half. You'd need a microscope to see this detail — cuticle layers wrapping a central core.</div>
   </div>
-  <div class="zoom-indicator">Zoom in 11×&ensp;↓</div>
+  <div class="zoom-badge">Zoom in 11×&ensp;↓</div>
 </section>
 
 <!-- Level 3: Red Blood Cell -->
-<section class="level" data-level="3">
-  <div class="level-visual">
-    <svg viewBox="0 0 200 200" fill="none">
-      <!-- Biconcave disc - side view -->
-      <ellipse cx="100" cy="100" rx="80" ry="45" fill="#cc3333" opacity="0.4" stroke="#ff4444" stroke-width="1"/>
-      <!-- Inner dimple -->
-      <ellipse cx="100" cy="100" rx="35" ry="18" fill="#0d1117" opacity="0.4"/>
-      <ellipse cx="100" cy="100" rx="35" ry="18" fill="none" stroke="#ff6666" stroke-width="0.8" opacity="0.6"/>
-      <!-- Highlight -->
-      <ellipse cx="80" cy="82" rx="20" ry="10" fill="#ff6666" opacity="0.15"/>
-      <!-- Some surface details -->
-      <path d="M40 95 Q70 80 100 85 Q130 80 160 95" fill="none" stroke="#ff4444" stroke-width="0.5" opacity="0.3"/>
-      <path d="M40 105 Q70 120 100 115 Q130 120 160 105" fill="none" stroke="#ff4444" stroke-width="0.5" opacity="0.3"/>
-    </svg>
-  </div>
-  <div class="level-label">
+<section class="section" data-idx="3">
+  <div class="model-viewport" id="vp-rbc"></div>
+  <div class="label">
     <div class="name">Red Blood Cell</div>
-    <div class="size-value">7,000 nm</div>
-    <div class="description">The donut-shaped cell carrying oxygen through your blood. Millions pass through your heart every second.</div>
+    <div class="size">7 µm</div>
+    <div class="desc">The biconcave disc carrying oxygen. Billions flow through you right now — too small for any optical microscope to resolve clearly.</div>
   </div>
-  <div class="zoom-indicator">Zoom in 70×&ensp;↓</div>
+  <div class="zoom-badge">Zoom in 70×&ensp;↓</div>
 </section>
 
-<!-- Level 4: Virus -->
-<section class="level" data-level="4">
-  <div class="level-visual">
-    <svg viewBox="0 0 200 200" fill="none">
-      <!-- Virus body -->
-      <circle cx="100" cy="100" r="45" fill="#2d8a4e" opacity="0.4" stroke="#44cc66" stroke-width="1"/>
-      <!-- Spike proteins -->
-      <g stroke="#66ee88" stroke-width="1.5" fill="#44cc66">
-        <line x1="100" y1="55" x2="100" y2="35"/><circle cx="100" cy="32" r="4" opacity="0.7"/>
-        <line x1="100" y1="145" x2="100" y2="165"/><circle cx="100" cy="168" r="4" opacity="0.7"/>
-        <line x1="55" y1="100" x2="35" y2="100"/><circle cx="32" cy="100" r="4" opacity="0.7"/>
-        <line x1="145" y1="100" x2="165" y2="100"/><circle cx="168" cy="100" r="4" opacity="0.7"/>
-        <line x1="68" y1="68" x2="53" y2="53"/><circle cx="50" cy="50" r="4" opacity="0.7"/>
-        <line x1="132" y1="68" x2="147" y2="53"/><circle cx="150" cy="50" r="4" opacity="0.7"/>
-        <line x1="68" y1="132" x2="53" y2="147"/><circle cx="50" cy="150" r="4" opacity="0.7"/>
-        <line x1="132" y1="132" x2="147" y2="147"/><circle cx="150" cy="150" r="4" opacity="0.7"/>
-        <!-- Extra spikes -->
-        <line x1="80" y1="57" x2="72" y2="38"/><circle cx="70" cy="35" r="3.5" opacity="0.7"/>
-        <line x1="120" y1="57" x2="128" y2="38"/><circle cx="130" cy="35" r="3.5" opacity="0.7"/>
-        <line x1="57" y1="80" x2="38" y2="72"/><circle cx="35" cy="70" r="3.5" opacity="0.7"/>
-        <line x1="143" y1="80" x2="162" y2="72"/><circle cx="165" cy="70" r="3.5" opacity="0.7"/>
-        <line x1="57" y1="120" x2="38" y2="128"/><circle cx="35" cy="130" r="3.5" opacity="0.7"/>
-        <line x1="143" y1="120" x2="162" y2="128"/><circle cx="165" cy="130" r="3.5" opacity="0.7"/>
-        <line x1="80" y1="143" x2="72" y2="162"/><circle cx="70" cy="165" r="3.5" opacity="0.7"/>
-        <line x1="120" y1="143" x2="128" y2="162"/><circle cx="130" cy="165" r="3.5" opacity="0.7"/>
-      </g>
-      <!-- Inner RNA squiggle -->
-      <path d="M85 90 Q90 80 100 85 Q110 90 105 100 Q100 110 90 105 Q80 100 85 90" 
-            fill="none" stroke="#88ffaa" stroke-width="1" opacity="0.4"/>
-    </svg>
+<!-- Level 4: Conventional Liposome (Doxil) -->
+<section class="section" data-idx="4">
+  <div class="model-viewport" id="vp-liposome"></div>
+  <div class="label">
+    <div class="name">Conventional Liposome (Doxil®)</div>
+    <div class="size">100 nm</div>
+    <div class="desc">The current standard in nano-drug delivery. Approved since 1995. This is what existing nanomedicine looks like — we're 5× smaller.</div>
   </div>
-  <div class="level-label">
-    <div class="name">SARS-CoV-2 Virus</div>
-    <div class="size-value">100 nm</div>
-    <div class="description">The virus that caused a global pandemic. It takes an electron microscope to see this. We're 5× smaller.</div>
-  </div>
-  <div class="zoom-indicator">Zoom in 5×&ensp;↓</div>
+  <div class="zoom-badge">Zoom in 5×&ensp;↓</div>
 </section>
 
-<!-- Level 5: THE LNP — 3D model reveal -->
-<section class="lnp-level" data-level="5">
-  <div id="lnp-canvas"></div>
+<!-- Level 5: Virus for context -->
+<section class="section" data-idx="5">
+  <div class="model-viewport" id="vp-virus"></div>
+  <div class="label">
+    <div class="name">SARS-CoV-2</div>
+    <div class="size">100 nm</div>
+    <div class="desc">Same scale as a conventional liposome. You need an electron microscope to see this. We operate below this threshold.</div>
+  </div>
+  <div class="zoom-badge">Final zoom 5×&ensp;↓</div>
+</section>
+
+<!-- Level 6: OUR LNP -->
+<section class="section lnp-section" data-idx="6">
+  <div class="model-viewport" id="vp-lnp"></div>
   <div class="lnp-overlay">
-    <div class="tagline">This is us</div>
+    <div class="tag">This is us</div>
     <h2>~20 nm</h2>
-    <p>Our lipid nanoparticle. 4,000× smaller than a human hair. Small enough to cross the blood-brain barrier and deliver medicine directly into diseased cells.</p>
+    <p>Our lipid nanoparticle. 5× smaller than Doxil. Small enough to cross the blood-brain barrier and deliver drugs directly into diseased cells — where conventional liposomes cannot reach.</p>
   </div>
 </section>
 
 <!-- Footer -->
 <section class="footer">
   <h2>Precision at the atomic scale.</h2>
-  <p>We engineer drug delivery vehicles at the frontier of what's physically possible — where biology meets nanotechnology.</p>
+  <p>We engineer drug delivery at the frontier of what's physically possible.</p>
   <div class="brand">ATOM BIOS</div>
 </section>
 
@@ -402,112 +207,412 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// --- Intersection Observer for scroll animations ---
-const levels = document.querySelectorAll('.level');
-const dots = document.querySelectorAll('.progress-dot');
+// --- Scroll reveal ---
+const sections = document.querySelectorAll('.section');
+const progressEl = document.getElementById('progress');
+sections.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'pdot' + (i === 0 ? ' on' : '');
+  progressEl.appendChild(d);
+});
+const pdots = document.querySelectorAll('.pdot');
 
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      // Update progress dots
-      const levelNum = entry.target.dataset.level;
-      if (levelNum) {
-        dots.forEach((dot, i) => {
-          dot.classList.toggle('active', i <= parseInt(levelNum));
-        });
-      }
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      const idx = parseInt(e.target.dataset.idx);
+      pdots.forEach((d, i) => d.classList.toggle('on', i <= idx));
     }
   });
-}, { threshold: 0.3 });
+}, { threshold: 0.25 });
+sections.forEach(s => obs.observe(s));
 
-levels.forEach(level => observer.observe(level));
-
-// Also observe the LNP section
-const lnpSection = document.querySelector('.lnp-level');
-let lnpLoaded = false;
-
-const lnpObserver = new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting && !lnpLoaded) {
-    lnpLoaded = true;
-    loadLNPModel();
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i <= 5);
-    });
-  }
-}, { threshold: 0.2 });
-lnpObserver.observe(lnpSection);
-
-// --- Three.js LNP viewer (loads on scroll) ---
-function loadLNPModel() {
-  const container = document.getElementById('lnp-canvas');
+// --- Mini 3D scene builder ---
+function createMiniScene(container, buildFn, opts = {}) {
+  const w = container.clientWidth || 280;
+  const h = container.clientHeight || 280;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0d1117);
-
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const camera = new THREE.PerspectiveCamera(40, w / h, 0.01, 100);
+  camera.position.set(0, 0, opts.camZ || 4);
+  
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
   container.appendChild(renderer.domElement);
 
-  // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-  dir.position.set(5, 10, 7);
-  scene.add(dir);
-  const rim = new THREE.PointLight(0x00d4ff, 0.6, 20);
-  rim.position.set(-3, 3, -5);
-  scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x7b2ff7, 0.3);
-  fill.position.set(-5, -3, 5);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const d = new THREE.DirectionalLight(0xffffff, 1.0);
+  d.position.set(3, 5, 4);
+  scene.add(d);
+  const fill = new THREE.DirectionalLight(0x4488ff, 0.3);
+  fill.position.set(-3, -2, -3);
   scene.add(fill);
 
-  // Controls
+  const group = new THREE.Group();
+  scene.add(group);
+  buildFn(group);
+
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 1.0;
+  controls.enableZoom = false;
   controls.enablePan = false;
-  controls.maxDistance = 15;
-  controls.minDistance = 2;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 1.5;
 
-  // Load model
-  const loader = new GLTFLoader();
-  loader.load('lipo2.glb', (gltf) => {
-    const model = gltf.scene;
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 3 / maxDim;
-    model.scale.setScalar(scale);
-    model.position.sub(center.multiplyScalar(scale));
-    scene.add(model);
-    
-    camera.position.set(0, 1.5, 6);
-    controls.target.set(0, 0, 0);
-    controls.update();
-  });
-
+  let running = false;
   function animate() {
+    if (!running) return;
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
   }
-  animate();
 
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  // Only animate when visible
+  const visObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { running = true; animate(); }
+    else { running = false; }
+  }, { threshold: 0.1 });
+  visObs.observe(container);
 }
 
-// Intro visible by default
-document.getElementById('intro').style.opacity = '1';
+// ====== SAND: Irregular rock with displacement + surface detail ======
+createMiniScene(document.getElementById('vp-sand'), (group) => {
+  const geo = new THREE.IcosahedronGeometry(1.3, 3);
+  const pos = geo.attributes.position;
+  // Seeded noise for consistent shape
+  for (let i = 0; i < pos.count; i++) {
+    const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+    const noise = 0.8 + 0.4 * (Math.sin(v.x * 5.1 + v.y * 3.7) * Math.cos(v.z * 4.3 + v.x * 2.9) * 0.5 + 0.5);
+    pos.setXYZ(i, v.x * noise, v.y * noise, v.z * noise);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xc9a84c,
+    roughness: 0.85,
+    metalness: 0.05,
+    flatShading: true
+  });
+  group.add(new THREE.Mesh(geo, mat));
+  // Surface pits
+  for (let i = 0; i < 20; i++) {
+    const pit = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x8a6b20, roughness: 1 })
+    );
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    pit.position.setFromSphericalCoords(1.1, phi, theta);
+    group.add(pit);
+  }
+});
+
+// ====== HAIR: Cross-section with cuticle layers, cortex, medulla ======
+createMiniScene(document.getElementById('vp-hair'), (group) => {
+  // Outer cuticle (overlapping scale layers)
+  for (let i = 0; i < 5; i++) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.2 - i * 0.04, 0.03, 8, 48),
+      new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.6, transparent: true, opacity: 0.7 - i * 0.1 })
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.z = i * 0.02;
+    group.add(ring);
+  }
+  // Cortex (main body)
+  const cortex = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.0, 1.0, 0.4, 48, 1, false),
+    new THREE.MeshStandardMaterial({ color: 0xa07818, roughness: 0.5 })
+  );
+  cortex.rotation.x = Math.PI / 2;
+  group.add(cortex);
+  // Cortex fibril pattern
+  for (let i = 0; i < 30; i++) {
+    const angle = (i / 30) * Math.PI * 2;
+    const r = 0.4 + Math.random() * 0.4;
+    const fibril = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 0.42, 4),
+      new THREE.MeshStandardMaterial({ color: 0x7a5818 })
+    );
+    fibril.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+    fibril.rotation.x = Math.PI / 2;
+    group.add(fibril);
+  }
+  // Medulla (center)
+  const medulla = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.25, 0.45, 16),
+    new THREE.MeshStandardMaterial({ color: 0x4a3008, roughness: 0.8 })
+  );
+  medulla.rotation.x = Math.PI / 2;
+  group.add(medulla);
+}, { camZ: 3.5 });
+
+// ====== RED BLOOD CELL: Proper biconcave parametric surface ======
+createMiniScene(document.getElementById('vp-rbc'), (group) => {
+  // Parametric biconcave disc
+  const segments = 64;
+  const rings = 32;
+  const geo = new THREE.BufferGeometry();
+  const vertices = [];
+  const normals = [];
+  const indices = [];
+
+  for (let j = 0; j <= rings; j++) {
+    const v = j / rings;
+    const r = v * 1.4; // radial distance
+    for (let i = 0; i <= segments; i++) {
+      const u = i / segments;
+      const theta = u * Math.PI * 2;
+      // Biconcave profile: y = a*(r^2 - 1)*(r^2 - b) gives the dimple
+      const rNorm = r / 1.4;
+      const y = 0.35 * (rNorm * rNorm - 1) * (rNorm * rNorm - 0.4);
+      vertices.push(Math.cos(theta) * r, y, Math.sin(theta) * r);
+      normals.push(0, 1, 0); // placeholder
+    }
+  }
+  // Build indices
+  for (let j = 0; j < rings; j++) {
+    for (let i = 0; i < segments; i++) {
+      const a = j * (segments + 1) + i;
+      const b = a + 1;
+      const c = a + (segments + 1);
+      const d = c + 1;
+      indices.push(a, c, b);
+      indices.push(b, c, d);
+    }
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: 0xcc2222,
+    roughness: 0.3,
+    metalness: 0.0,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.2,
+    side: THREE.DoubleSide
+  });
+  const rbc = new THREE.Mesh(geo, mat);
+  group.add(rbc);
+
+  // Bottom half (mirror)
+  const rbc2 = rbc.clone();
+  rbc2.scale.y = -1;
+  group.add(rbc2);
+  
+  group.rotation.x = 0.4;
+}, { camZ: 4 });
+
+// ====== CONVENTIONAL LIPOSOME: Lipid bilayer shell with PEG chains ======
+createMiniScene(document.getElementById('vp-liposome'), (group) => {
+  // Outer membrane (lipid heads)
+  const outerShell = new THREE.Mesh(
+    new THREE.SphereGeometry(1.3, 48, 48),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x4488cc,
+      roughness: 0.2,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.5,
+      clearcoat: 0.3
+    })
+  );
+  group.add(outerShell);
+
+  // Inner membrane
+  const innerShell = new THREE.Mesh(
+    new THREE.SphereGeometry(1.1, 48, 48),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x2266aa,
+      roughness: 0.3,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    })
+  );
+  group.add(innerShell);
+
+  // Lipid head groups (dots on surface) — outer
+  const headMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.4 });
+  for (let i = 0; i < 200; i++) {
+    const phi = Math.acos(1 - 2 * (i + 0.5) / 200);
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), headMat);
+    head.position.setFromSphericalCoords(1.32, phi, theta);
+    group.add(head);
+  }
+
+  // PEG chains (polymer brush on surface)
+  const pegMat = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.5 });
+  for (let i = 0; i < 40; i++) {
+    const phi = Math.acos(1 - 2 * (i + 0.5) / 40);
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2, 4), pegMat);
+    const pos = new THREE.Vector3().setFromSphericalCoords(1.42, phi, theta);
+    peg.position.copy(pos);
+    peg.lookAt(0, 0, 0);
+    peg.rotateX(Math.PI / 2);
+    group.add(peg);
+    // PEG tip
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4), pegMat);
+    tip.position.copy(new THREE.Vector3().setFromSphericalCoords(1.52, phi, theta));
+    group.add(tip);
+  }
+
+  // Cargo inside (drug payload dots)
+  const cargoMat = new THREE.MeshStandardMaterial({ color: 0xff6644, emissive: 0xff2200, emissiveIntensity: 0.3 });
+  for (let i = 0; i < 15; i++) {
+    const cargo = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), cargoMat);
+    cargo.position.set(
+      (Math.random() - 0.5) * 1.4,
+      (Math.random() - 0.5) * 1.4,
+      (Math.random() - 0.5) * 1.4
+    );
+    if (cargo.position.length() < 0.9) group.add(cargo);
+  }
+}, { camZ: 4 });
+
+// ====== VIRUS: Proper SARS-CoV-2 with envelope + spike glycoproteins ======
+createMiniScene(document.getElementById('vp-virus'), (group) => {
+  // Viral envelope
+  const envelope = new THREE.Mesh(
+    new THREE.SphereGeometry(1.0, 48, 48),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x337744,
+      roughness: 0.4,
+      metalness: 0.1,
+      clearcoat: 0.2
+    })
+  );
+  group.add(envelope);
+
+  // M-protein bumps on surface
+  const bumpMat = new THREE.MeshStandardMaterial({ color: 0x448855, roughness: 0.5 });
+  for (let i = 0; i < 80; i++) {
+    const phi = Math.acos(1 - 2 * (i + 0.5) / 80);
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const bump = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), bumpMat);
+    bump.position.setFromSphericalCoords(1.02, phi, theta);
+    group.add(bump);
+  }
+
+  // Spike glycoproteins (the "crown")
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x66cc77, roughness: 0.4 });
+  const headMat = new THREE.MeshStandardMaterial({ color: 0x88ee99, roughness: 0.3 });
+  const spikeCount = 35;
+  for (let i = 0; i < spikeCount; i++) {
+    const phi = Math.acos(1 - 2 * (i + 0.5) / spikeCount);
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const dir = new THREE.Vector3().setFromSphericalCoords(1, phi, theta).normalize();
+
+    // Stem
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.02, 0.35, 6),
+      stemMat
+    );
+    const stemPos = dir.clone().multiplyScalar(1.17);
+    stem.position.copy(stemPos);
+    stem.lookAt(dir.clone().multiplyScalar(2));
+    stem.rotateX(Math.PI / 2);
+    group.add(stem);
+
+    // Trident head (3 lobes — characteristic S protein shape)
+    const headGroup = new THREE.Group();
+    const tipPos = dir.clone().multiplyScalar(1.4);
+    headGroup.position.copy(tipPos);
+    for (let j = 0; j < 3; j++) {
+      const lobe = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 8, 8),
+        headMat
+      );
+      const angle = (j / 3) * Math.PI * 2;
+      lobe.position.set(Math.cos(angle) * 0.05, Math.sin(angle) * 0.05, 0);
+      headGroup.add(lobe);
+    }
+    headGroup.lookAt(0, 0, 0);
+    group.add(headGroup);
+  }
+
+  // RNA inside (simplified coil)
+  const rnaMat = new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.4 });
+  const rnaCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.4, -0.3, 0),
+    new THREE.Vector3(0, 0.3, 0.3),
+    new THREE.Vector3(0.3, -0.2, -0.2),
+    new THREE.Vector3(-0.2, 0.1, -0.3),
+    new THREE.Vector3(0.1, -0.1, 0.2),
+  ], true);
+  const rnaGeo = new THREE.TubeGeometry(rnaCurve, 50, 0.03, 8, true);
+  group.add(new THREE.Mesh(rnaGeo, rnaMat));
+}, { camZ: 4.2 });
+
+// ====== OUR LNP: Load the actual GLB model ======
+const lnpContainer = document.getElementById('vp-lnp');
+const lnpScene = new THREE.Scene();
+const lnpCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 100);
+lnpCamera.position.set(0, 1.5, 5.5);
+
+const lnpRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+lnpRenderer.setSize(window.innerWidth, window.innerHeight);
+lnpRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+lnpRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+lnpRenderer.toneMappingExposure = 1.2;
+lnpContainer.appendChild(lnpRenderer.domElement);
+
+lnpScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const lnpDir = new THREE.DirectionalLight(0xffffff, 1.2);
+lnpDir.position.set(5, 10, 7);
+lnpScene.add(lnpDir);
+const lnpRim = new THREE.PointLight(0x00d4ff, 0.6, 20);
+lnpRim.position.set(-3, 3, -5);
+lnpScene.add(lnpRim);
+
+const lnpControls = new OrbitControls(lnpCamera, lnpRenderer.domElement);
+lnpControls.enableDamping = true;
+lnpControls.autoRotate = true;
+lnpControls.autoRotateSpeed = 1.0;
+lnpControls.enablePan = false;
+lnpControls.enableZoom = true;
+
+let lnpLoaded = false;
+const lnpObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && !lnpLoaded) {
+    lnpLoaded = true;
+    const loader = new GLTFLoader();
+    loader.load('lipo2.glb', (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const s = 3 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(s);
+      model.position.sub(center.multiplyScalar(s));
+      lnpScene.add(model);
+    });
+  }
+}, { threshold: 0.15 });
+lnpObs.observe(lnpContainer);
+
+let lnpRunning = false;
+const lnpVisObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { lnpRunning = true; lnpAnimate(); }
+  else { lnpRunning = false; }
+}, { threshold: 0.1 });
+lnpVisObs.observe(lnpContainer);
+
+function lnpAnimate() {
+  if (!lnpRunning) return;
+  requestAnimationFrame(lnpAnimate);
+  lnpControls.update();
+  lnpRenderer.render(lnpScene, lnpCamera);
+}
+
+window.addEventListener('resize', () => {
+  lnpCamera.aspect = window.innerWidth / window.innerHeight;
+  lnpCamera.updateProjectionMatrix();
+  lnpRenderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
