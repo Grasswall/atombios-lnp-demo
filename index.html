@@ -164,7 +164,7 @@
   scene.fog = new THREE.FogExp2(0x030508, 0.0005);
 
   var W = window.innerWidth, H = window.innerHeight;
-  var camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 15000);
+  var camera = new THREE.PerspectiveCamera(45, W / H, 0.001, 1000000);
   camera.position.set(0, 1.5, 7);
 
   var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -182,6 +182,11 @@
   controls.enablePan = false;
   controls.minDistance = 0;
   controls.maxDistance = Infinity;
+
+  // Cancel camera lerp on any user interaction (so zoom isn't fought)
+  renderer.domElement.addEventListener('pointerdown', function() { camLerping = false; });
+  renderer.domElement.addEventListener('wheel', function() { camLerping = false; });
+  renderer.domElement.addEventListener('touchstart', function() { camLerping = false; });
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
   controls.target.set(0, 0, 0);
