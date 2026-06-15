@@ -153,10 +153,10 @@
   /* ─── Scene setup ───────────────────────────────── */
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x060910);
-  scene.fog = new THREE.FogExp2(0x060910, 0.028);
+  scene.fog = new THREE.FogExp2(0x060910, 0.0008);
 
   var W = window.innerWidth, H = window.innerHeight;
-  var camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 500);
+  var camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 15000);
   camera.position.set(0, 1.5, 7);
 
   var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -170,8 +170,8 @@
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
-  controls.minDistance = 2;
-  controls.maxDistance = 40;
+  controls.minDistance = 0.5;
+  controls.maxDistance = 8000;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
   controls.target.set(0, 0, 0);
@@ -219,24 +219,21 @@
   var lnpGroup = new THREE.Group();
   scene.add(lnpGroup);
 
-  var glowRing = (function() {
-    var geo = new THREE.RingGeometry(1.25, 1.45, 64);
-    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-    var mesh = new THREE.Mesh(geo, mat);
-    mesh.visible = false;
-    lnpGroup.add(mesh);
-    return mesh;
-  })();
-  // Second ring perpendicular for visibility from any angle
-  var glowRing2 = (function() {
-    var geo = new THREE.RingGeometry(1.25, 1.45, 64);
-    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
-    var mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.y = Math.PI / 2;
-    mesh.visible = false;
-    lnpGroup.add(mesh);
-    return mesh;
-  })();
+  var glowRing = null;
+  var glowRing2 = null;
+  function buildGlowRings(scale) {
+    if (glowRing) { lnpGroup.remove(glowRing); lnpGroup.remove(glowRing2); }
+    var innerR = 1.25 * scale, outerR = 1.45 * scale;
+    var geo = new THREE.RingGeometry(innerR, outerR, 64);
+    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+    glowRing = new THREE.Mesh(geo, mat);
+    lnpGroup.add(glowRing);
+    var geo2 = new THREE.RingGeometry(innerR, outerR, 64);
+    var mat2 = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+    glowRing2 = new THREE.Mesh(geo2, mat2);
+    glowRing2.rotation.y = Math.PI / 2;
+    lnpGroup.add(glowRing2);
+  }
 
   /* ─── Comparison objects (built procedurally) ───── */
   var compGroup = new THREE.Group();
@@ -244,10 +241,10 @@
 
   var comparisons = {};
 
-  // Scale design: LNP radius=1. Comparisons at differentiated sizes.
-  // Doxil/Virus: radius 5 (true 5× scale, transparent shell around LNP)
-  // RBC: radius 8 (capped from 350×, semi-transparent)
-  // Sand: radius 12 (capped from 25000×, semi-transparent)
+  // TRUE SCALE: LNP radius=1 (20nm). No capping. Show real ratios.
+  // Doxil/Virus: radius 5 (true 5×)
+  // RBC: radius 350 (true 350×)
+  // Sand: radius 1500 (capped from 25000× for render, still dramatic)
 
   /* Doxil® liposome — 100nm = 5× LNP. TRUE SCALE radius 5 */
   function buildDoxil() {
@@ -398,10 +395,10 @@
     return g;
   }
 
-  /* Red Blood Cell — 7000nm = 350× LNP. Capped visual at radius 8 */
+  /* Red Blood Cell — 7000nm = 350× LNP. TRUE SCALE radius 350 */
   function buildRBC() {
     var g = new THREE.Group();
-    var R = 8;
+    var R = 350;
 
     // Biconcave disc — parametric radial profile
     var S = 64, RINGS = 32;
@@ -454,10 +451,10 @@
     return g;
   }
 
-  /* Grain of Sand — 500,000nm = 25,000× LNP. Capped visual at radius 12 */
+  /* Grain of Sand — 500,000nm = 25,000× LNP. Radius 1500 (render limit) */
   function buildSand() {
     var g = new THREE.Group();
-    var R = 12;
+    var R = 1500;
 
     // Irregular quartz grain — deformed icosahedron with facets
     var geo = new THREE.IcosahedronGeometry(R, 2);
@@ -520,8 +517,8 @@
     none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5 },
     doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard. Our particle fits inside it — 5× smaller, 5× more precise.', cam: 14 },
     virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 14 },
-    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 22 },
-    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger', desc: 'The smallest thing visible to the naked eye. We are 25,000× smaller.', cam: 32 }
+    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger',   desc: 'Our nanoparticle is an invisible speck beside a single blood cell.', cam: 900 },
+    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger', desc: 'The smallest thing you can see with the naked eye. We are 25,000× smaller.', cam: 4000 }
   };
 
   /* ─── Camera animation ──────────────────────────── */
@@ -531,10 +528,9 @@
   function animateCamera(dist) {
     var angle = Math.atan2(camera.position.x, camera.position.z);
     camTarget.x = Math.sin(angle) * dist;
-    camTarget.y = 1.5;
+    camTarget.y = dist * 0.15;
     camTarget.z = Math.cos(angle) * dist;
     camLerping = true;
-    controls.maxDistance = dist * 3;
   }
 
   /* ─── State ─────────────────────────────────────── */
@@ -555,9 +551,19 @@
       compGroup.add(comparisons[id]);
     }
 
-    // Glow ring — both rings
-    glowRing.visible = (id !== 'none');
-    glowRing2.visible = (id !== 'none');
+    // Glow ring — scale based on camera distance so LNP is always findable
+    var glowScale = 1;
+    if (id === 'rbc') glowScale = 15;
+    else if (id === 'sand') glowScale = 80;
+    else if (id !== 'none') glowScale = 1;
+    
+    if (id !== 'none') {
+      buildGlowRings(glowScale);
+      glowRing.visible = true;
+      glowRing2.visible = true;
+    } else {
+      if (glowRing) { glowRing.visible = false; glowRing2.visible = false; }
+    }
 
     // Update chips
     var chips = document.querySelectorAll('.chip');
@@ -691,13 +697,13 @@
       var dt = clock.getDelta();
 
       // Glow ring always faces camera and pulses
-      if (glowRing.visible) {
+      if (glowRing && glowRing.visible) {
         glowRing.lookAt(camera.position);
         glowRing2.lookAt(camera.position);
-        glowRing2.rotation.y += Math.PI / 3;
-        var pulse = 0.5 + 0.25 * Math.sin(clock.elapsedTime * 2.5);
+        glowRing2.rotateZ(Math.PI / 3);
+        var pulse = 0.6 + 0.35 * Math.sin(clock.elapsedTime * 3.0);
         glowRing.material.opacity = pulse;
-        glowRing2.material.opacity = pulse * 0.7;
+        glowRing2.material.opacity = pulse * 0.6;
       }
 
       // Slow rotation for comparison objects
