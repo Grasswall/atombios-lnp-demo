@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Atom Bios — LNP Drug Delivery System</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif;
+  background: #0a0a0f; color: #fff; overflow: hidden;
+  touch-action: none;
+}
+#canvas-container { width: 100vw; height: 100vh; position: relative; }
+canvas { display: block; }
+
+/* Top bar */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 20px 24px; z-index: 100;
+  background: linear-gradient(to bottom, rgba(10,10,15,0.9), transparent);
+}
+.top-bar h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+.top-bar p { font-size: 12px; color: #888; margin-top: 4px; }
+
+/* Scale indicator */
+.scale-panel {
+  position: fixed; bottom: 100px; left: 24px; right: 24px;
+  z-index: 100; text-align: center;
+}
+.scale-label {
+  font-size: 14px; color: #ccc; margin-bottom: 8px;
+  transition: all 0.3s;
+}
+.scale-value {
+  font-size: 28px; font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  transition: all 0.3s;
+}
+
+/* Comparison cards */
+.comparison-bar {
+  position: fixed; bottom: 24px; left: 0; right: 0;
+  display: flex; gap: 8px; padding: 0 16px;
+  overflow-x: auto; z-index: 100;
+  -webkit-overflow-scrolling: touch;
+}
+.comp-card {
+  flex-shrink: 0;
+  padding: 10px 16px; border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer; transition: all 0.2s;
+  text-align: center; min-width: 100px;
+}
+.comp-card.active {
+  background: rgba(0,212,255,0.15);
+  border-color: #00d4ff;
+}
+.comp-card .emoji { font-size: 20px; }
+.comp-card .name { font-size: 11px; color: #aaa; margin-top: 4px; }
+.comp-card .size { font-size: 10px; color: #666; margin-top: 2px; }
+
+/* Info overlay */
+.info-panel {
+  position: fixed; top: 80px; right: 20px;
+  padding: 16px; border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  z-index: 100; max-width: 200px;
+  opacity: 0; transition: opacity 0.3s;
+}
+.info-panel.visible { opacity: 1; }
+.info-panel h3 { font-size: 13px; color: #00d4ff; margin-bottom: 6px; }
+.info-panel p { font-size: 11px; color: #aaa; line-height: 1.5; }
+
+/* Loading */
+.loader {
+  position: fixed; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: #0a0a0f; z-index: 1000;
+  flex-direction: column; gap: 16px;
+  transition: opacity 0.5s;
+}
+.loader.hidden { opacity: 0; pointer-events: none; }
+.loader-ring {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid rgba(0,212,255,0.2);
+  border-top-color: #00d4ff;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader p { font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader">
+  <div class="loader-ring"></div>
+  <p>Loading 3D Model...</p>
+</div>
+
+<div class="top-bar">
+  <h1>Atom Bios — LNP Drug Delivery</h1>
+  <p>Pinch to zoom · Drag to rotate · Tap items to compare</p>
+</div>
+
+<div class="info-panel" id="info-panel">
+  <h3 id="info-title"></h3>
+  <p id="info-text"></p>
+</div>
+
+<div class="scale-panel">
+  <div class="scale-label">Particle diameter</div>
+  <div class="scale-value" id="scale-value">~20 nm</div>
+</div>
+
+<div class="comparison-bar" id="comparison-bar">
+  <div class="comp-card active" data-id="lnp">
+    <div class="emoji">💊</div>
+    <div class="name">Our LNP</div>
+    <div class="size">20 nm</div>
+  </div>
+  <div class="comp-card" data-id="virus">
+    <div class="emoji">🦠</div>
+    <div class="name">Virus</div>
+    <div class="size">100 nm</div>
+  </div>
+  <div class="comp-card" data-id="rbc">
+    <div class="emoji">🔴</div>
+    <div class="name">Red Blood Cell</div>
+    <div class="size">7,000 nm</div>
+  </div>
+  <div class="comp-card" data-id="hair">
+    <div class="emoji">〰️</div>
+    <div class="name">Human Hair</div>
+    <div class="size">80,000 nm</div>
+  </div>
+  <div class="comp-card" data-id="sand">
+    <div class="emoji">⏳</div>
+    <div class="name">Grain of Sand</div>
+    <div class="size">500,000 nm</div>
+  </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 10, 7);
+scene.add(dirLight);
+const rimLight = new THREE.DirectionalLight(0x00d4ff, 0.4);
+rimLight.position.set(-5, 0, -5);
+scene.add(rimLight);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
+controls.enablePan = false;
+
+// Scale reference spheres (hidden by default, shown on comparison tap)
+const comparisons = {
+  lnp: { scale: 1, color: 0x00d4ff, size: 20 },
+  virus: { scale: 5, color: 0x44ff44, size: 100 },
+  rbc: { scale: 350, color: 0xff4444, size: 7000 },
+  hair: { scale: 4000, color: 0xffaa00, size: 80000 },
+  sand: { scale: 25000, color: 0xffdd88, size: 500000 }
+};
+
+let lnpModel = null;
+let comparisonMesh = null;
+
+// Load LNP model
+const loader = new GLTFLoader();
+loader.load('lipo2.glb', (gltf) => {
+  lnpModel = gltf.scene;
+  
+  // Center and scale
+  const box = new THREE.Box3().setFromObject(lnpModel);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = 3 / maxDim;
+  lnpModel.scale.setScalar(scale);
+  lnpModel.position.sub(center.multiplyScalar(scale));
+  
+  scene.add(lnpModel);
+  camera.position.set(0, 2, 6);
+  controls.target.set(0, 0, 0);
+  controls.update();
+  
+  document.getElementById('loader').classList.add('hidden');
+}, 
+(progress) => {},
+(error) => {
+  console.error('Error loading model:', error);
+  document.querySelector('.loader p').textContent = 'Error loading model';
+});
+
+// Comparison interaction
+const cards = document.querySelectorAll('.comp-card');
+const infoPanel = document.getElementById('info-panel');
+const infoTitle = document.getElementById('info-title');
+const infoText = document.getElementById('info-text');
+const scaleValue = document.getElementById('scale-value');
+
+const infoData = {
+  lnp: { title: 'Our Lipid Nanoparticle', text: '~20 nm diameter. Small enough to cross the blood-brain barrier and deliver drugs directly into cells. 4,000× smaller than a red blood cell.' },
+  virus: { title: 'Typical Virus', text: '~100 nm. Our LNP is 5× smaller than most viruses, allowing it to evade immune detection more effectively.' },
+  rbc: { title: 'Red Blood Cell', text: '~7,000 nm (7 µm). Our nanoparticle is 350× smaller — it flows freely through the smallest capillaries.' },
+  hair: { title: 'Human Hair', text: '~80,000 nm (80 µm) diameter. You could fit 4,000 of our nanoparticles across a single hair.' },
+  sand: { title: 'Grain of Sand', text: '~500,000 nm (0.5 mm). Our LNP is 25,000× smaller — invisible to the naked eye.' }
+};
+
+cards.forEach(card => {
+  card.addEventListener('click', () => {
+    cards.forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    
+    const id = card.dataset.id;
+    const comp = comparisons[id];
+    
+    // Update info
+    infoTitle.textContent = infoData[id].title;
+    infoText.textContent = infoData[id].text;
+    infoPanel.classList.add('visible');
+    scaleValue.textContent = `~${comp.size.toLocaleString()} nm`;
+    
+    // Show scale comparison sphere
+    if (comparisonMesh) scene.remove(comparisonMesh);
+    if (id !== 'lnp') {
+      const relativeScale = comp.scale / comparisons.lnp.scale;
+      const geom = new THREE.SphereGeometry(0.3, 32, 32);
+      const mat = new THREE.MeshPhysicalMaterial({
+        color: comp.color,
+        transparent: true,
+        opacity: 0.3,
+        roughness: 0.2,
+        transmission: 0.5
+      });
+      comparisonMesh = new THREE.Mesh(geom, mat);
+      // Position to the right, scaled relative to LNP
+      const displayScale = Math.min(Math.log2(relativeScale) * 0.5, 4);
+      comparisonMesh.scale.setScalar(displayScale);
+      comparisonMesh.position.set(displayScale + 2, 0, 0);
+      scene.add(comparisonMesh);
+    } else {
+      infoPanel.classList.remove('visible');
+    }
+  });
+});
+
+// Animation loop
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  if (lnpModel) {
+    lnpModel.rotation.y += 0.001;
+  }
+  renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
