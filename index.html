@@ -219,6 +219,14 @@
     }
   );
 
+  /* ─── Matcap textures (from nidorx/matcaps, CC0) ─── */
+  var texLoader = new THREE.TextureLoader();
+  var matcapBase = 'https://raw.githubusercontent.com/nidorx/matcaps/master/256/';
+  var matcapVirus = texLoader.load(matcapBase + '660505_F2B090_DD4D37_AA1914-256px.png');
+  var matcapEnvelope = texLoader.load(matcapBase + '3B6E10_E3F2C3_88AC2E_99CE51-256px.png');
+  var matcapBlood = texLoader.load(matcapBase + 'C21338_920C24_E71C54_F34A7D-256px.png');
+  var matcapSand = texLoader.load(matcapBase + 'C09E5C_DAD2B9_654429_81582D-256px.png');
+
   /* ─── Floating nano-particles + stars ───────────── */
   (function buildParticles() {
     var positions = [];
@@ -441,19 +449,19 @@
       envPos.setXYZ(i, ex * bump, ey * bump, ez * bump);
     }
     envGeo.computeVertexNormals();
-    var envMat = new THREE.MeshStandardMaterial({ color: 0x667744, roughness: 0.6, metalness: 0.05, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+    var envMat = new THREE.MeshMatcapMaterial({ matcap: matcapEnvelope, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
     g.add(new THREE.Mesh(envGeo, envMat));
 
-    // M-protein matrix (subtle texture layer)
+    // M-protein matrix
     var mGeo = new THREE.SphereGeometry(R * 0.76, 32, 32);
-    var mMat = new THREE.MeshStandardMaterial({ color: 0x556633, transparent: true, opacity: 0.15, side: THREE.BackSide, roughness: 0.8 });
+    var mMat = new THREE.MeshMatcapMaterial({ matcap: matcapEnvelope, transparent: true, opacity: 0.15, side: THREE.BackSide });
     g.add(new THREE.Mesh(mGeo, mMat));
 
     // Spike (S) glycoproteins — the iconic corona
     // Mushroom-shaped: thin stalk + bulbous 3-lobed head
-    var stalkMat = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.5, metalness: 0.1 });
-    var headMat = new THREE.MeshStandardMaterial({ color: 0xff6655, roughness: 0.3, metalness: 0.15, emissive: 0x331111, emissiveIntensity: 0.15 });
-    var lobeMat = new THREE.MeshStandardMaterial({ color: 0xff8877, roughness: 0.25, metalness: 0.2 });
+    var stalkMat = new THREE.MeshMatcapMaterial({ matcap: matcapVirus });
+    var headMat = new THREE.MeshMatcapMaterial({ matcap: matcapVirus });
+    var lobeMat = new THREE.MeshMatcapMaterial({ matcap: matcapVirus });
 
     var SPIKES = 55;
     for (var s = 0; s < SPIKES; s++) {
@@ -500,7 +508,7 @@
     }
 
     // E-protein small bumps (minor)
-    var eMat = new THREE.MeshStandardMaterial({ color: 0x99aa77, roughness: 0.6, metalness: 0 });
+    var eMat = new THREE.MeshMatcapMaterial({ matcap: matcapEnvelope });
     for (var e = 0; e < 20; e++) {
       var ephi = Math.acos(1 - 2 * (e + 0.5 + SPIKES) / (SPIKES + 20));
       var eth = Math.PI * (1 + Math.sqrt(5)) * (e + SPIKES);
@@ -543,7 +551,7 @@
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    var mat = new THREE.MeshStandardMaterial({ color: 0xbb2222, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
+    var mat = new THREE.MeshMatcapMaterial({ matcap: matcapBlood, side: THREE.DoubleSide, transparent: true, opacity: 0.55 });
     var top = new THREE.Mesh(geo, mat);
     g.add(top);
     var bottom = new THREE.Mesh(geo, mat.clone());
@@ -552,18 +560,10 @@
 
     // Rim highlight
     var rimGeo = new THREE.TorusGeometry(R, R * 0.06, 16, 64);
-    var rimMat = new THREE.MeshStandardMaterial({ color: 0xdd3333, roughness: 0.3, metalness: 0.1, emissive: 0x220000, emissiveIntensity: 0.1 });
+    var rimMat = new THREE.MeshMatcapMaterial({ matcap: matcapBlood, transparent: true, opacity: 0.6 });
     var rim = new THREE.Mesh(rimGeo, rimMat);
     rim.rotation.x = Math.PI / 2;
     g.add(rim);
-
-    // Make semi-transparent so LNP shows through
-    g.traverse(function(child) {
-      if (child.isMesh) {
-        child.material.transparent = true;
-        child.material.opacity = 0.5;
-      }
-    });
 
     g.rotation.x = 0.4;
     return g;
@@ -587,11 +587,11 @@
     }
     geo.computeVertexNormals();
 
-    var mat = new THREE.MeshStandardMaterial({ color: 0xd4a855, roughness: 0.85, metalness: 0.02, flatShading: true });
+    var mat = new THREE.MeshMatcapMaterial({ matcap: matcapSand, flatShading: true, transparent: true, opacity: 0.55 });
     g.add(new THREE.Mesh(geo, mat));
 
     // Crystalline facet highlights
-    var facetMat = new THREE.MeshStandardMaterial({ color: 0xeebb66, roughness: 0.3, metalness: 0.15, flatShading: true });
+    var facetMat = new THREE.MeshMatcapMaterial({ matcap: matcapSand, flatShading: true, transparent: true, opacity: 0.4 });
     var facetGeo = new THREE.IcosahedronGeometry(R * 0.5, 1);
     var facetPos = facetGeo.attributes.position;
     for (var f = 0; f < facetPos.count; f++) {
@@ -605,7 +605,7 @@
     g.add(inclusion);
 
     // Surface pitting
-    var pitMat = new THREE.MeshStandardMaterial({ color: 0x8a6622, roughness: 0.95, metalness: 0 });
+    var pitMat = new THREE.MeshMatcapMaterial({ matcap: matcapSand, transparent: true, opacity: 0.3 });
     for (var p = 0; p < 8; p++) {
       var pphi = Math.acos(1 - 2 * (p + 0.5) / 8);
       var pth = Math.PI * (1 + Math.sqrt(5)) * p;
@@ -614,14 +614,6 @@
       pit.scale.set(1, 0.4, 1);
       g.add(pit);
     }
-
-    // Make semi-transparent so LNP shows through
-    g.traverse(function(child) {
-      if (child.isMesh) {
-        child.material.transparent = true;
-        child.material.opacity = 0.55;
-      }
-    });
 
     return g;
   }
