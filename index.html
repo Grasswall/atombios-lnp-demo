@@ -8,7 +8,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif;
-  background: #0a0a0f; color: #fff; overflow: hidden;
+  background: #1a1a2e; color: #fff; overflow: hidden;
   touch-action: none;
 }
 #canvas-container { width: 100vw; height: 100vh; position: relative; }
@@ -18,14 +18,14 @@ canvas { display: block; }
 .top-bar {
   position: fixed; top: 0; left: 0; right: 0;
   padding: 20px 24px; z-index: 100;
-  background: linear-gradient(to bottom, rgba(10,10,15,0.9), transparent);
+  background: linear-gradient(to bottom, rgba(26,26,46,0.95), transparent);
 }
 .top-bar h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
-.top-bar p { font-size: 12px; color: #888; margin-top: 4px; }
+.top-bar p { font-size: 12px; color: #999; margin-top: 4px; }
 
 /* Scale indicator */
 .scale-panel {
-  position: fixed; bottom: 100px; left: 24px; right: 24px;
+  position: fixed; bottom: 110px; left: 24px; right: 24px;
   z-index: 100; text-align: center;
 }
 .scale-label {
@@ -36,6 +36,10 @@ canvas { display: block; }
   font-size: 28px; font-weight: 700;
   background: linear-gradient(135deg, #00d4ff, #7b2ff7);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  transition: all 0.3s;
+}
+.scale-ratio {
+  font-size: 13px; color: #888; margin-top: 4px;
   transition: all 0.3s;
 }
 
@@ -49,7 +53,7 @@ canvas { display: block; }
 .comp-card {
   flex-shrink: 0;
   padding: 10px 16px; border-radius: 12px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.1);
   cursor: pointer; transition: all 0.2s;
@@ -70,7 +74,7 @@ canvas { display: block; }
   background: rgba(255,255,255,0.06);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.1);
-  z-index: 100; max-width: 200px;
+  z-index: 100; max-width: 220px;
   opacity: 0; transition: opacity 0.3s;
 }
 .info-panel.visible { opacity: 1; }
@@ -81,7 +85,7 @@ canvas { display: block; }
 .loader {
   position: fixed; inset: 0; display: flex;
   align-items: center; justify-content: center;
-  background: #0a0a0f; z-index: 1000;
+  background: #1a1a2e; z-index: 1000;
   flex-direction: column; gap: 16px;
   transition: opacity 0.5s;
 }
@@ -105,7 +109,7 @@ canvas { display: block; }
 
 <div class="top-bar">
   <h1>Atom Bios — LNP Drug Delivery</h1>
-  <p>Pinch to zoom · Drag to rotate · Tap items to compare</p>
+  <p>Pinch to zoom · Drag to rotate · Tap items to compare scale</p>
 </div>
 
 <div class="info-panel" id="info-panel">
@@ -114,8 +118,9 @@ canvas { display: block; }
 </div>
 
 <div class="scale-panel">
-  <div class="scale-label">Particle diameter</div>
+  <div class="scale-label" id="scale-label">Our Lipid Nanoparticle</div>
   <div class="scale-value" id="scale-value">~20 nm</div>
+  <div class="scale-ratio" id="scale-ratio"></div>
 </div>
 
 <div class="comparison-bar" id="comparison-bar">
@@ -163,131 +168,202 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+scene.background = new THREE.Color(0x1a1a2e);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 2000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 container.appendChild(renderer.domElement);
 
+// Subtle gradient fog
+scene.fog = new THREE.Fog(0x1a1a2e, 15, 60);
+
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
-const rimLight = new THREE.DirectionalLight(0x00d4ff, 0.4);
-rimLight.position.set(-5, 0, -5);
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+fillLight.position.set(-5, -3, -5);
+scene.add(fillLight);
+const rimLight = new THREE.PointLight(0x00d4ff, 0.5, 20);
+rimLight.position.set(0, 5, -5);
 scene.add(rimLight);
+
+// Grid helper for depth perception
+const grid = new THREE.GridHelper(30, 30, 0x333355, 0x222244);
+grid.position.y = -2;
+scene.add(grid);
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.8;
-controls.enablePan = false;
+controls.autoRotateSpeed = 0.5;
+controls.enablePan = true;
+controls.maxDistance = 50;
+controls.minDistance = 1;
 
-// Scale reference spheres (hidden by default, shown on comparison tap)
+// Scale data
 const comparisons = {
-  lnp: { scale: 1, color: 0x00d4ff, size: 20 },
-  virus: { scale: 5, color: 0x44ff44, size: 100 },
-  rbc: { scale: 350, color: 0xff4444, size: 7000 },
-  hair: { scale: 4000, color: 0xffaa00, size: 80000 },
-  sand: { scale: 25000, color: 0xffdd88, size: 500000 }
+  lnp:   { size: 20,     color: 0x00d4ff, label: 'Our Lipid Nanoparticle', ratio: '' },
+  virus: { size: 100,    color: 0x66ff88, label: 'Typical Virus (e.g. SARS-CoV-2)', ratio: '5× larger than our LNP' },
+  rbc:   { size: 7000,   color: 0xff5555, label: 'Red Blood Cell', ratio: '350× larger than our LNP' },
+  hair:  { size: 80000,  color: 0xffbb44, label: 'Human Hair (cross-section)', ratio: '4,000× larger than our LNP' },
+  sand:  { size: 500000, color: 0xffdd88, label: 'Grain of Sand', ratio: '25,000× larger than our LNP' }
+};
+
+const infoData = {
+  lnp:   'Our nanoparticle at ~20 nm. Small enough to cross the blood-brain barrier and deliver drugs directly into cells.',
+  virus: 'A typical virus like SARS-CoV-2 is ~100 nm. Our LNP is 5× smaller, enabling it to evade immune detection more effectively.',
+  rbc:   'A red blood cell is ~7,000 nm (7 µm). Our nanoparticle is 350× smaller — it flows freely through the smallest capillaries without blockage.',
+  hair:  'A human hair is ~80,000 nm (80 µm) wide. You could line up 4,000 of our nanoparticles across a single strand.',
+  sand:  'A grain of sand is ~500,000 nm (0.5 mm). Our LNP is 25,000× smaller — completely invisible to the naked eye.'
 };
 
 let lnpModel = null;
-let comparisonMesh = null;
+let lnpBaseScale = 1;
+let compGroup = new THREE.Group();
+scene.add(compGroup);
+
+// Create wireframe sphere for scale reference
+function createCompSphere(radius, color) {
+  const group = new THREE.Group();
+  // Solid transparent sphere
+  const geom = new THREE.SphereGeometry(radius, 48, 48);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.12,
+    roughness: 0.3,
+    metalness: 0.1,
+    side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(geom, mat);
+  group.add(mesh);
+  // Wireframe outline
+  const wire = new THREE.WireframeGeometry(new THREE.SphereGeometry(radius, 24, 24));
+  const lineMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.4, transparent: true });
+  const wireframe = new THREE.LineSegments(wire, lineMat);
+  group.add(wireframe);
+  return group;
+}
 
 // Load LNP model
 const loader = new GLTFLoader();
 loader.load('lipo2.glb', (gltf) => {
   lnpModel = gltf.scene;
   
-  // Center and scale
   const box = new THREE.Box3().setFromObject(lnpModel);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
-  const scale = 3 / maxDim;
-  lnpModel.scale.setScalar(scale);
-  lnpModel.position.sub(center.multiplyScalar(scale));
+  lnpBaseScale = 2.5 / maxDim; // LNP sphere radius ~1.25 units = 20nm
+  lnpModel.scale.setScalar(lnpBaseScale);
+  lnpModel.position.sub(center.multiplyScalar(lnpBaseScale));
   
   scene.add(lnpModel);
-  camera.position.set(0, 2, 6);
+  camera.position.set(0, 2, 7);
   controls.target.set(0, 0, 0);
   controls.update();
   
   document.getElementById('loader').classList.add('hidden');
-}, 
-(progress) => {},
-(error) => {
+}, undefined, (error) => {
   console.error('Error loading model:', error);
   document.querySelector('.loader p').textContent = 'Error loading model';
 });
 
-// Comparison interaction
+// UI elements
 const cards = document.querySelectorAll('.comp-card');
 const infoPanel = document.getElementById('info-panel');
 const infoTitle = document.getElementById('info-title');
 const infoText = document.getElementById('info-text');
 const scaleValue = document.getElementById('scale-value');
+const scaleLabel = document.getElementById('scale-label');
+const scaleRatio = document.getElementById('scale-ratio');
 
-const infoData = {
-  lnp: { title: 'Our Lipid Nanoparticle', text: '~20 nm diameter. Small enough to cross the blood-brain barrier and deliver drugs directly into cells. 4,000× smaller than a red blood cell.' },
-  virus: { title: 'Typical Virus', text: '~100 nm. Our LNP is 5× smaller than most viruses, allowing it to evade immune detection more effectively.' },
-  rbc: { title: 'Red Blood Cell', text: '~7,000 nm (7 µm). Our nanoparticle is 350× smaller — it flows freely through the smallest capillaries.' },
-  hair: { title: 'Human Hair', text: '~80,000 nm (80 µm) diameter. You could fit 4,000 of our nanoparticles across a single hair.' },
-  sand: { title: 'Grain of Sand', text: '~500,000 nm (0.5 mm). Our LNP is 25,000× smaller — invisible to the naked eye.' }
-};
+let currentId = 'lnp';
+const LNP_RADIUS = 1.25; // LNP model occupies ~1.25 units radius = 20nm
+
+function showComparison(id) {
+  currentId = id;
+  const comp = comparisons[id];
+  
+  // Update UI
+  cards.forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-id="${id}"]`).classList.add('active');
+  scaleLabel.textContent = comp.label;
+  scaleValue.textContent = `~${comp.size.toLocaleString()} nm`;
+  scaleRatio.textContent = comp.ratio;
+  infoTitle.textContent = comp.label;
+  infoText.textContent = infoData[id];
+  infoPanel.classList.toggle('visible', id !== 'lnp');
+  
+  // Clear previous comparison sphere
+  while (compGroup.children.length) compGroup.remove(compGroup.children[0]);
+  
+  if (id === 'lnp') {
+    // Reset camera to close view of LNP
+    animateCamera(new THREE.Vector3(0, 2, 7), new THREE.Vector3(0, 0, 0));
+    return;
+  }
+  
+  // Calculate comparison sphere radius in scene units
+  // LNP_RADIUS = 20nm, so 1 unit = 20/1.25 = 16nm
+  const nmPerUnit = 20 / LNP_RADIUS;
+  let sphereRadius = (comp.size / 2) / nmPerUnit;
+  
+  // Cap visual size for readability but show true ratio in label
+  const maxVisualRadius = 12;
+  const actualRadius = sphereRadius;
+  if (sphereRadius > maxVisualRadius) sphereRadius = maxVisualRadius;
+  
+  const sphere = createCompSphere(sphereRadius, comp.color);
+  sphere.position.set(0, 0, 0); // centered on same origin as LNP
+  compGroup.add(sphere);
+  
+  // Pull camera back to show comparison
+  const camDist = Math.max(sphereRadius * 3, 7);
+  animateCamera(
+    new THREE.Vector3(0, sphereRadius * 0.5, camDist),
+    new THREE.Vector3(0, 0, 0)
+  );
+}
+
+// Smooth camera animation
+let cameraTarget = null;
+let controlsTarget = null;
+let animProgress = 1;
+
+function animateCamera(newPos, newTarget) {
+  cameraTarget = newPos;
+  controlsTarget = newTarget;
+  animProgress = 0;
+}
 
 cards.forEach(card => {
-  card.addEventListener('click', () => {
-    cards.forEach(c => c.classList.remove('active'));
-    card.classList.add('active');
-    
-    const id = card.dataset.id;
-    const comp = comparisons[id];
-    
-    // Update info
-    infoTitle.textContent = infoData[id].title;
-    infoText.textContent = infoData[id].text;
-    infoPanel.classList.add('visible');
-    scaleValue.textContent = `~${comp.size.toLocaleString()} nm`;
-    
-    // Show scale comparison sphere
-    if (comparisonMesh) scene.remove(comparisonMesh);
-    if (id !== 'lnp') {
-      const relativeScale = comp.scale / comparisons.lnp.scale;
-      const geom = new THREE.SphereGeometry(0.3, 32, 32);
-      const mat = new THREE.MeshPhysicalMaterial({
-        color: comp.color,
-        transparent: true,
-        opacity: 0.3,
-        roughness: 0.2,
-        transmission: 0.5
-      });
-      comparisonMesh = new THREE.Mesh(geom, mat);
-      // Position to the right, scaled relative to LNP
-      const displayScale = Math.min(Math.log2(relativeScale) * 0.5, 4);
-      comparisonMesh.scale.setScalar(displayScale);
-      comparisonMesh.position.set(displayScale + 2, 0, 0);
-      scene.add(comparisonMesh);
-    } else {
-      infoPanel.classList.remove('visible');
-    }
-  });
+  card.addEventListener('click', () => showComparison(card.dataset.id));
 });
 
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
-  controls.update();
-  if (lnpModel) {
-    lnpModel.rotation.y += 0.001;
+  
+  // Camera animation
+  if (animProgress < 1) {
+    animProgress += 0.02;
+    const t = Math.min(animProgress, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out
+    camera.position.lerp(cameraTarget, ease * 0.05);
+    controls.target.lerp(controlsTarget, ease * 0.05);
   }
+  
+  controls.update();
   renderer.render(scene, camera);
 }
 animate();
