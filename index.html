@@ -244,192 +244,271 @@
 
   var comparisons = {};
 
-  /* Doxil® liposome — 100nm = 5× LNP = radius 5 */
+  // Visual cap: all comparisons max radius 3.5, shown BEHIND LNP as translucent ghost
+  // LNP (radius 1) always stays centered and prominent
+  var COMP_CAP = 3.5;
+
+  /* Doxil® liposome — 100nm = 5× LNP. Show at true scale (radius 5 capped to 3.5) */
   function buildDoxil() {
     var g = new THREE.Group();
+    var R = COMP_CAP;
 
-    // Outer liposome shell (semi-transparent)
-    var shellGeo = new THREE.SphereGeometry(5, 40, 40);
+    // Outer bilayer shell
+    var shellGeo = new THREE.SphereGeometry(R, 64, 64);
     var shellMat = new THREE.MeshStandardMaterial({
-      color: 0xff8844, transparent: true, opacity: 0.08,
-      side: THREE.DoubleSide, roughness: 0.3, metalness: 0
+      color: 0x4499dd, transparent: true, opacity: 0.12,
+      side: THREE.DoubleSide, roughness: 0.2, metalness: 0
     });
     g.add(new THREE.Mesh(shellGeo, shellMat));
 
-    // Lipid bilayer outline rings
-    var ring1Geo = new THREE.TorusGeometry(5, 0.08, 12, 80);
-    var ringMat = new THREE.MeshStandardMaterial({ color: 0xff8844, roughness: 0.6, metalness: 0 });
-    var r1 = new THREE.Mesh(ring1Geo, ringMat);
-    g.add(r1);
-    var r2 = new THREE.Mesh(new THREE.TorusGeometry(5, 0.08, 12, 80), ringMat);
-    r2.rotation.x = Math.PI / 2;
-    g.add(r2);
-    var r3 = new THREE.Mesh(new THREE.TorusGeometry(5, 0.08, 12, 80), ringMat);
-    r3.rotation.z = Math.PI / 2;
-    g.add(r3);
+    // Inner bilayer
+    var innerGeo = new THREE.SphereGeometry(R * 0.92, 48, 48);
+    var innerMat = new THREE.MeshStandardMaterial({
+      color: 0x3377aa, transparent: true, opacity: 0.06,
+      side: THREE.DoubleSide, roughness: 0.3, metalness: 0
+    });
+    g.add(new THREE.Mesh(innerGeo, innerMat));
 
-    // Lipid head dots on surface
-    var headMat = new THREE.MeshStandardMaterial({ color: 0xffaa44, roughness: 0.5, metalness: 0.1 });
-    for (var i = 0; i < 180; i++) {
-      var phi = Math.acos(1 - 2 * (i + 0.5) / 180);
+    // Lipid head groups (golden dots on outer surface)
+    var headMat = new THREE.MeshStandardMaterial({ color: 0xffcc55, roughness: 0.4, metalness: 0.1, emissive: 0x332200, emissiveIntensity: 0.1 });
+    for (var i = 0; i < 200; i++) {
+      var phi = Math.acos(1 - 2 * (i + 0.5) / 200);
       var theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      var x = 5 * Math.sin(phi) * Math.cos(theta);
-      var y = 5 * Math.sin(phi) * Math.sin(theta);
-      var z = 5 * Math.cos(phi);
-      var dot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), headMat);
-      dot.position.set(x, y, z);
+      var dot = new THREE.Mesh(new THREE.SphereGeometry(R * 0.022, 6, 6), headMat);
+      dot.position.set(R * Math.sin(phi) * Math.cos(theta), R * Math.sin(phi) * Math.sin(theta), R * Math.cos(phi));
       g.add(dot);
     }
 
-    // PEG chains sticking out
-    var pegMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.8, metalness: 0 });
-    for (var j = 0; j < 24; j++) {
-      var phi2 = Math.acos(1 - 2 * (j + 0.5) / 24);
+    // PEG polymer brushes (wispy lines sticking out)
+    var pegMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.8, metalness: 0 });
+    for (var j = 0; j < 30; j++) {
+      var phi2 = Math.acos(1 - 2 * (j + 0.5) / 30);
       var theta2 = Math.PI * (1 + Math.sqrt(5)) * j;
-      var bx = 5 * Math.sin(phi2) * Math.cos(theta2);
-      var by = 5 * Math.sin(phi2) * Math.sin(theta2);
-      var bz = 5 * Math.cos(phi2);
-      var dir = new THREE.Vector3(bx, by, bz).normalize();
-      var peg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 5), pegMat);
-      peg.position.set(bx + dir.x * 0.3, by + dir.y * 0.3, bz + dir.z * 0.3);
-      peg.lookAt(bx + dir.x * 2, by + dir.y * 2, bz + dir.z * 2);
+      var nx = Math.sin(phi2) * Math.cos(theta2), ny = Math.sin(phi2) * Math.sin(theta2), nz = Math.cos(phi2);
+      var peg = new THREE.Mesh(new THREE.CylinderGeometry(R*0.006, R*0.006, R*0.15, 4), pegMat);
+      peg.position.set(nx * (R + R*0.08), ny * (R + R*0.08), nz * (R + R*0.08));
+      peg.lookAt(nx * R * 3, ny * R * 3, nz * R * 3);
       peg.rotateX(Math.PI / 2);
       g.add(peg);
+      // Tip sphere
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(R*0.015, 5, 5), pegMat);
+      tip.position.set(nx * (R + R*0.16), ny * (R + R*0.16), nz * (R + R*0.16));
+      g.add(tip);
     }
 
-    // Drug cargo inside (tiny red spheres)
-    var cargoMat = new THREE.MeshStandardMaterial({ color: 0xff2244, emissive: 0x330011, roughness: 0.4, metalness: 0.2 });
-    for (var k = 0; k < 16; k++) {
-      var cr = 1.5 + Math.random() * 2;
-      var cphi = Math.random() * Math.PI;
-      var cth = Math.random() * Math.PI * 2;
-      var cargo = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), cargoMat);
+    // Drug cargo crystals inside
+    var cargoMat = new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0x440000, emissiveIntensity: 0.3, roughness: 0.3, metalness: 0.2 });
+    for (var k = 0; k < 20; k++) {
+      var cr = 0.5 + (k / 20) * (R * 0.55);
+      var cphi = Math.PI * (k * 0.618 + 0.3);
+      var cth = Math.PI * 2 * (k * 0.381);
+      var cargo = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.04, 0), cargoMat);
       cargo.position.set(cr * Math.sin(cphi) * Math.cos(cth), cr * Math.sin(cphi) * Math.sin(cth), cr * Math.cos(cphi));
+      cargo.rotation.set(k, k * 1.3, k * 0.7);
       g.add(cargo);
     }
 
     return g;
   }
 
-  /* SARS-CoV-2 — 100nm = radius 5 */
+  /* SARS-CoV-2 — 100nm = radius 5 (capped). Iconic crown morphology */
   function buildVirus() {
     var g = new THREE.Group();
+    var R = COMP_CAP;
 
-    // Envelope
-    var envGeo = new THREE.SphereGeometry(5, 36, 36);
-    var envMat = new THREE.MeshStandardMaterial({ color: 0xcc3355, transparent: true, opacity: 0.35, roughness: 0.7, metalness: 0 });
+    // Lipid envelope - slightly rough, organic looking
+    var envGeo = new THREE.IcosahedronGeometry(R * 0.75, 4);
+    var envPos = envGeo.attributes.position;
+    for (var i = 0; i < envPos.count; i++) {
+      var ex = envPos.getX(i), ey = envPos.getY(i), ez = envPos.getZ(i);
+      var bump = 1.0 + 0.03 * Math.sin(ex * 8 + ey * 5) * Math.cos(ez * 7 + ex * 3);
+      envPos.setXYZ(i, ex * bump, ey * bump, ez * bump);
+    }
+    envGeo.computeVertexNormals();
+    var envMat = new THREE.MeshStandardMaterial({ color: 0x667744, roughness: 0.6, metalness: 0.05 });
     g.add(new THREE.Mesh(envGeo, envMat));
 
-    // Spike proteins
-    var spikeMat = new THREE.MeshStandardMaterial({ color: 0xff6677, roughness: 0.5, metalness: 0.1 });
-    var headMat2 = new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.3, metalness: 0.2 });
-    for (var i = 0; i < 72; i++) {
-      var phi = Math.acos(1 - 2 * (i + 0.5) / 72);
-      var theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      var bx = 5 * Math.sin(phi) * Math.cos(theta);
-      var by = 5 * Math.sin(phi) * Math.sin(theta);
-      var bz = 5 * Math.cos(phi);
-      var dir = new THREE.Vector3(bx, by, bz).normalize();
+    // M-protein matrix (subtle texture layer)
+    var mGeo = new THREE.SphereGeometry(R * 0.76, 32, 32);
+    var mMat = new THREE.MeshStandardMaterial({ color: 0x556633, transparent: true, opacity: 0.3, side: THREE.BackSide, roughness: 0.8 });
+    g.add(new THREE.Mesh(mGeo, mMat));
 
-      // Stalk
-      var stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.7, 5), spikeMat);
-      stalk.position.set(bx + dir.x * 0.35, by + dir.y * 0.35, bz + dir.z * 0.35);
-      stalk.lookAt(bx + dir.x * 2, by + dir.y * 2, bz + dir.z * 2);
+    // Spike (S) glycoproteins — the iconic corona
+    // Mushroom-shaped: thin stalk + bulbous 3-lobed head
+    var stalkMat = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.5, metalness: 0.1 });
+    var headMat = new THREE.MeshStandardMaterial({ color: 0xff6655, roughness: 0.3, metalness: 0.15, emissive: 0x331111, emissiveIntensity: 0.15 });
+    var lobeMat = new THREE.MeshStandardMaterial({ color: 0xff8877, roughness: 0.25, metalness: 0.2 });
+
+    var SPIKES = 55;
+    for (var s = 0; s < SPIKES; s++) {
+      var phi = Math.acos(1 - 2 * (s + 0.5) / SPIKES);
+      var theta = Math.PI * (1 + Math.sqrt(5)) * s;
+      var nx = Math.sin(phi) * Math.cos(theta);
+      var ny = Math.sin(phi) * Math.sin(theta);
+      var nz = Math.cos(phi);
+      var baseR = R * 0.76;
+
+      // Stalk — tapered cylinder
+      var stalkLen = R * 0.28;
+      var stalk = new THREE.Mesh(new THREE.CylinderGeometry(R*0.015, R*0.025, stalkLen, 6), stalkMat);
+      var sx = nx * (baseR + stalkLen * 0.5);
+      var sy = ny * (baseR + stalkLen * 0.5);
+      var sz = nz * (baseR + stalkLen * 0.5);
+      stalk.position.set(sx, sy, sz);
+      stalk.lookAt(nx * baseR * 3, ny * baseR * 3, nz * baseR * 3);
       stalk.rotateX(Math.PI / 2);
       g.add(stalk);
 
-      // Trimer head (3-lobed)
+      // Head — central bulb
+      var headDist = baseR + stalkLen;
+      var headSphere = new THREE.Mesh(new THREE.SphereGeometry(R * 0.055, 8, 8), headMat);
+      headSphere.position.set(nx * headDist, ny * headDist, nz * headDist);
+      g.add(headSphere);
+
+      // 3 lobes (trimer receptor binding domains)
       for (var lobe = 0; lobe < 3; lobe++) {
-        var head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 7), headMat2);
-        var ang = (lobe / 3) * Math.PI * 2;
-        var off = 0.2;
-        var tipDist = 5 + 0.7 + 0.15;
-        head.position.set(
-          bx + dir.x * tipDist + Math.cos(ang) * off * dir.z,
-          by + dir.y * tipDist + Math.sin(ang) * off,
-          bz + dir.z * tipDist + Math.cos(ang) * off * dir.x
-        );
-        g.add(head);
+        var ang = (lobe / 3) * Math.PI * 2 + s * 0.5; // offset per spike
+        // Compute perpendicular to normal
+        var up = new THREE.Vector3(0, 1, 0);
+        var tangent = new THREE.Vector3(nx, ny, nz).cross(up).normalize();
+        if (tangent.length() < 0.01) tangent.set(1, 0, 0);
+        var bitangent = new THREE.Vector3(nx, ny, nz).cross(tangent).normalize();
+        var lobeDist = R * 0.06;
+        var lx = nx * (headDist + R*0.02) + tangent.x * Math.cos(ang) * lobeDist + bitangent.x * Math.sin(ang) * lobeDist;
+        var ly = ny * (headDist + R*0.02) + tangent.y * Math.cos(ang) * lobeDist + bitangent.y * Math.sin(ang) * lobeDist;
+        var lz = nz * (headDist + R*0.02) + tangent.z * Math.cos(ang) * lobeDist + bitangent.z * Math.sin(ang) * lobeDist;
+        var lobeM = new THREE.Mesh(new THREE.SphereGeometry(R * 0.035, 6, 6), lobeMat);
+        lobeM.position.set(lx, ly, lz);
+        g.add(lobeM);
       }
     }
 
+    // E-protein small bumps (minor)
+    var eMat = new THREE.MeshStandardMaterial({ color: 0x99aa77, roughness: 0.6, metalness: 0 });
+    for (var e = 0; e < 20; e++) {
+      var ephi = Math.acos(1 - 2 * (e + 0.5 + SPIKES) / (SPIKES + 20));
+      var eth = Math.PI * (1 + Math.sqrt(5)) * (e + SPIKES);
+      var enx = Math.sin(ephi) * Math.cos(eth), eny = Math.sin(ephi) * Math.sin(eth), enz = Math.cos(ephi);
+      var eDot = new THREE.Mesh(new THREE.SphereGeometry(R * 0.025, 5, 5), eMat);
+      eDot.position.set(enx * R * 0.78, eny * R * 0.78, enz * R * 0.78);
+      g.add(eDot);
+    }
+
     return g;
   }
 
-  /* Red Blood Cell — 7000nm = 350× LNP; cap visual radius ~4.5, show scale in text */
+  /* Red Blood Cell — 7000nm = 350× LNP. Capped visual at radius 3.5 */
   function buildRBC() {
     var g = new THREE.Group();
+    var R = COMP_CAP;
 
-    // Biconcave disc using deformed sphere (flatten + indent poles)
-    var geo = new THREE.SphereGeometry(4.5, 48, 48);
-    var pos = geo.attributes.position;
-    for (var i = 0; i < pos.count; i++) {
-      var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      var r = Math.sqrt(x * x + z * z) / 4.5; // normalized radial (0 = pole, 1 = equator)
-      // Biconcave profile: flatten to disc, indent center
-      var newY = y * 0.28;
-      // additional indent at poles (low r)
-      var indent = 0.9 * Math.exp(-r * r * 6);
-      newY = newY - Math.sign(y) * indent * 1.1;
-      pos.setXYZ(i, x, newY, z);
+    // Biconcave disc — parametric radial profile
+    var S = 64, RINGS = 32;
+    var verts = [], indices = [];
+    for (var j = 0; j <= RINGS; j++) {
+      var rad = (j / RINGS) * R;
+      for (var i = 0; i <= S; i++) {
+        var t = (i / S) * Math.PI * 2;
+        var rN = rad / R; // 0 at center, 1 at edge
+        // Classic RBC biconcave profile
+        var y = R * 0.18 * (1 - rN * rN) * (0.5 + rN * rN);
+        if (rN < 0.65) y = R * 0.18 * (1 - rN * rN) * (0.5 + rN * rN) - R * 0.12 * (1 - rN / 0.65);
+        verts.push(Math.cos(t) * rad, y, Math.sin(t) * rad);
+      }
     }
+    for (var j2 = 0; j2 < RINGS; j2++) {
+      for (var i2 = 0; i2 < S; i2++) {
+        var a = j2 * (S + 1) + i2;
+        indices.push(a, a + S + 1, a + 1, a + 1, a + S + 1, a + S + 2);
+      }
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    var mat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7, metalness: 0.05, side: THREE.DoubleSide });
-    g.add(new THREE.Mesh(geo, mat));
+    var mat = new THREE.MeshStandardMaterial({ color: 0xbb2222, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide });
+    var top = new THREE.Mesh(geo, mat);
+    g.add(top);
+    var bottom = new THREE.Mesh(geo, mat.clone());
+    bottom.scale.y = -1;
+    g.add(bottom);
 
-    // Subtle membrane sheen — thin inner layer
-    var innerGeo = new THREE.SphereGeometry(4.3, 32, 32);
-    var innerPos = innerGeo.attributes.position;
-    for (var j = 0; j < innerPos.count; j++) {
-      var x2 = innerPos.getX(j), y2 = innerPos.getY(j), z2 = innerPos.getZ(j);
-      var r2 = Math.sqrt(x2 * x2 + z2 * z2) / 4.3;
-      var ny = y2 * 0.28 - Math.sign(y2) * 0.9 * Math.exp(-r2 * r2 * 6) * 1.05;
-      innerPos.setXYZ(j, x2, ny, z2);
-    }
-    innerGeo.computeVertexNormals();
-    var innerMat = new THREE.MeshStandardMaterial({ color: 0xff4444, transparent: true, opacity: 0.3, roughness: 0.5, metalness: 0.1 });
-    g.add(new THREE.Mesh(innerGeo, innerMat));
+    // Rim highlight
+    var rimGeo = new THREE.TorusGeometry(R, R * 0.06, 16, 64);
+    var rimMat = new THREE.MeshStandardMaterial({ color: 0xdd3333, roughness: 0.3, metalness: 0.1, emissive: 0x220000, emissiveIntensity: 0.1 });
+    var rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.rotation.x = Math.PI / 2;
+    g.add(rim);
 
+    // Make semi-transparent so LNP shows through
+    g.traverse(function(child) {
+      if (child.isMesh) {
+        child.material.transparent = true;
+        child.material.opacity = 0.5;
+      }
+    });
+
+    g.rotation.x = 0.4;
     return g;
   }
 
-  /* Grain of Sand — 500000nm = 25000× LNP; cap visual ~4.5, deformed icosahedron */
+  /* Grain of Sand — 500,000nm = 25,000× LNP. Capped visual at radius 3.5 */
   function buildSand() {
     var g = new THREE.Group();
+    var R = COMP_CAP;
 
-    var geo = new THREE.IcosahedronGeometry(4.5, 3);
+    // Irregular quartz grain — deformed icosahedron with facets
+    var geo = new THREE.IcosahedronGeometry(R, 2);
     var pos = geo.attributes.position;
-    // Deterministic pseudo-random deformation (no Math.random for consistency)
     for (var i = 0; i < pos.count; i++) {
       var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       var noise = Math.sin(x * 3.7 + y * 2.3 + z * 1.9) * 0.5
                + Math.sin(x * 7.1 - z * 5.3) * 0.25
-               + Math.sin(y * 8.9 + z * 4.7) * 0.15;
-      var scale = 1 + noise * 0.18;
-      pos.setXYZ(i, x * scale, y * scale, z * scale);
+               + Math.sin(y * 8.9 + z * 4.7) * 0.12;
+      var scale = 1 + noise * 0.22;
+      pos.setXYZ(i, x * scale, y * scale * 0.85, z * scale);
     }
     geo.computeVertexNormals();
 
-    var mat = new THREE.MeshStandardMaterial({ color: 0xd4a855, roughness: 0.92, metalness: 0.02 });
+    var mat = new THREE.MeshStandardMaterial({ color: 0xd4a855, roughness: 0.85, metalness: 0.02, flatShading: true });
     g.add(new THREE.Mesh(geo, mat));
 
-    // Some tiny surface pits
-    var pitMat = new THREE.MeshStandardMaterial({ color: 0xaa8833, roughness: 0.95, metalness: 0 });
-    for (var j = 0; j < 12; j++) {
-      var phi = Math.acos(1 - 2 * (j + 0.5) / 12);
-      var theta = Math.PI * (1 + Math.sqrt(5)) * j;
-      var px = 4.3 * Math.sin(phi) * Math.cos(theta);
-      var py = 4.3 * Math.sin(phi) * Math.sin(theta);
-      var pz = 4.3 * Math.cos(phi);
-      var pit = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 6), pitMat);
-      pit.position.set(px, py, pz);
+    // Crystalline facet highlights
+    var facetMat = new THREE.MeshStandardMaterial({ color: 0xeebb66, roughness: 0.3, metalness: 0.15, flatShading: true });
+    var facetGeo = new THREE.IcosahedronGeometry(R * 0.5, 1);
+    var facetPos = facetGeo.attributes.position;
+    for (var f = 0; f < facetPos.count; f++) {
+      var fx = facetPos.getX(f), fy = facetPos.getY(f), fz = facetPos.getZ(f);
+      var fn = 1 + Math.sin(fx * 5 + fz * 3) * 0.3;
+      facetPos.setXYZ(f, fx * fn, fy * fn * 0.7, fz * fn);
+    }
+    facetGeo.computeVertexNormals();
+    var inclusion = new THREE.Mesh(facetGeo, facetMat);
+    inclusion.position.set(R * 0.15, R * 0.1, -R * 0.1);
+    g.add(inclusion);
+
+    // Surface pitting
+    var pitMat = new THREE.MeshStandardMaterial({ color: 0x8a6622, roughness: 0.95, metalness: 0 });
+    for (var p = 0; p < 8; p++) {
+      var pphi = Math.acos(1 - 2 * (p + 0.5) / 8);
+      var pth = Math.PI * (1 + Math.sqrt(5)) * p;
+      var pit = new THREE.Mesh(new THREE.SphereGeometry(R * 0.08, 6, 6), pitMat);
+      pit.position.set(R * 0.88 * Math.sin(pphi) * Math.cos(pth), R * 0.88 * Math.sin(pphi) * Math.sin(pth), R * 0.88 * Math.cos(pphi));
+      pit.scale.set(1, 0.4, 1);
       g.add(pit);
     }
 
+    // Make semi-transparent so LNP shows through
+    g.traverse(function(child) {
+      if (child.isMesh) {
+        child.material.transparent = true;
+        child.material.opacity = 0.55;
+      }
+    });
+
     return g;
   }
-
   comparisons.none   = null;
   comparisons.doxil  = buildDoxil();
   comparisons.virus  = buildVirus();
@@ -438,10 +517,10 @@
 
   var DATA = {
     none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5 },
-    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard nanomedicine (FDA 1995). Our particle fits inside it — 5× smaller, 5× more precise.', cam: 12 },
-    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 12 },
-    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger than our LNP',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 14 },
-    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger than our LNP', desc: 'The smallest thing you can see. We are 25,000× smaller — invisible without electron microscopy.', cam: 14 }
+    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard nanomedicine (FDA 1995). Our particle fits inside it — 5× smaller, 5× more precise.', cam: 10 },
+    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 10 },
+    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger than our LNP',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 10 },
+    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger than our LNP', desc: 'The smallest thing you can see. We are 25,000× smaller — invisible without electron microscopy.', cam: 10 }
   };
 
   /* ─── Camera animation ──────────────────────────── */
