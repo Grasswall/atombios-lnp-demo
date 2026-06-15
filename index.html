@@ -231,27 +231,142 @@ let lnpBaseScale = 1;
 let compGroup = new THREE.Group();
 scene.add(compGroup);
 
-// Create wireframe sphere for scale reference
-function createCompSphere(radius, color) {
+// --- Comparison shape builders ---
+
+function createVirusShape(radius, color) {
   const group = new THREE.Group();
-  // Solid transparent sphere
-  const geom = new THREE.SphereGeometry(radius, 48, 48);
-  const mat = new THREE.MeshPhysicalMaterial({
-    color: color,
-    transparent: true,
-    opacity: 0.12,
-    roughness: 0.3,
-    metalness: 0.1,
-    side: THREE.DoubleSide
+  // Core sphere
+  const coreGeom = new THREE.SphereGeometry(radius * 0.75, 32, 32);
+  const coreMat = new THREE.MeshPhysicalMaterial({
+    color: color, transparent: true, opacity: 0.4,
+    roughness: 0.4, metalness: 0.1
   });
-  const mesh = new THREE.Mesh(geom, mat);
-  group.add(mesh);
-  // Wireframe outline
-  const wire = new THREE.WireframeGeometry(new THREE.SphereGeometry(radius, 24, 24));
-  const lineMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.4, transparent: true });
-  const wireframe = new THREE.LineSegments(wire, lineMat);
-  group.add(wireframe);
+  group.add(new THREE.Mesh(coreGeom, coreMat));
+  
+  // Spike proteins
+  const spikeMat = new THREE.MeshPhysicalMaterial({
+    color: 0xaaffaa, roughness: 0.5, metalness: 0.2
+  });
+  const spikeCount = 60;
+  for (let i = 0; i < spikeCount; i++) {
+    const phi = Math.acos(1 - 2 * (i + 0.5) / spikeCount);
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const x = Math.sin(phi) * Math.cos(theta);
+    const y = Math.sin(phi) * Math.sin(theta);
+    const z = Math.cos(phi);
+    
+    // Spike stem
+    const stemGeom = new THREE.CylinderGeometry(radius * 0.02, radius * 0.015, radius * 0.3, 6);
+    const stem = new THREE.Mesh(stemGeom, spikeMat);
+    stem.position.set(x * radius * 0.85, y * radius * 0.85, z * radius * 0.85);
+    stem.lookAt(x * radius * 2, y * radius * 2, z * radius * 2);
+    stem.rotateX(Math.PI / 2);
+    group.add(stem);
+    
+    // Spike head (bulb)
+    const headGeom = new THREE.SphereGeometry(radius * 0.05, 8, 8);
+    const head = new THREE.Mesh(headGeom, spikeMat);
+    head.position.set(x * radius, y * radius, z * radius);
+    group.add(head);
+  }
   return group;
+}
+
+function createRBCShape(radius, color) {
+  const group = new THREE.Group();
+  // Biconcave disc using LatheGeometry
+  const points = [];
+  const segments = 40;
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const r = t * radius;
+    // Biconcave profile: thick at edges, dimpled in center
+    const y = radius * 0.15 * Math.sin(t * Math.PI) * (1 - 0.6 * Math.pow(1 - t, 2));
+    points.push(new THREE.Vector2(r, y));
+  }
+  const latheGeom = new THREE.LatheGeometry(points, 48);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: color, transparent: true, opacity: 0.6,
+    roughness: 0.3, metalness: 0.0, side: THREE.DoubleSide
+  });
+  const disc = new THREE.Mesh(latheGeom, mat);
+  group.add(disc);
+  
+  // Also add bottom half (mirror)
+  const points2 = points.map(p => new THREE.Vector2(p.x, -p.y));
+  const latheGeom2 = new THREE.LatheGeometry(points2, 48);
+  const disc2 = new THREE.Mesh(latheGeom2, mat);
+  group.add(disc2);
+  
+  // Tilt slightly for visual interest
+  group.rotation.x = 0.3;
+  group.rotation.z = 0.2;
+  return group;
+}
+
+function createHairShape(radius, color) {
+  const group = new THREE.Group();
+  // Cylinder (hair cross-section, shown as a tube segment)
+  const length = radius * 3;
+  const cylGeom = new THREE.CylinderGeometry(radius, radius, length, 32, 1, false);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: color, transparent: true, opacity: 0.5,
+    roughness: 0.6, metalness: 0.0
+  });
+  const cyl = new THREE.Mesh(cylGeom, mat);
+  cyl.rotation.z = Math.PI / 6; // slight tilt
+  group.add(cyl);
+  
+  // Cross-section ring at one end
+  const ringGeom = new THREE.RingGeometry(radius * 0.9, radius, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, opacity: 0.8, transparent: true });
+  const ring = new THREE.Mesh(ringGeom, ringMat);
+  ring.position.y = length / 2;
+  ring.rotation.x = Math.PI / 2;
+  ring.rotation.z = -Math.PI / 6;
+  cyl.add(ring);
+  
+  return group;
+}
+
+function createSandShape(radius, color) {
+  const group = new THREE.Group();
+  // Irregular rock-like shape using icosahedron with noise
+  const geom = new THREE.IcosahedronGeometry(radius, 2);
+  const positions = geom.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+    const noise = 0.75 + Math.random() * 0.5;
+    positions.setXYZ(i, x * noise, y * noise, z * noise);
+  }
+  geom.computeVertexNormals();
+  
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: color, transparent: true, opacity: 0.5,
+    roughness: 0.9, metalness: 0.0,
+    flatShading: true
+  });
+  group.add(new THREE.Mesh(geom, mat));
+  
+  // Subtle edge highlight
+  const wireGeom = new THREE.WireframeGeometry(geom);
+  const wireMat = new THREE.LineBasicMaterial({ color: color, opacity: 0.15, transparent: true });
+  group.add(new THREE.LineSegments(wireGeom, wireMat));
+  
+  return group;
+}
+
+// Factory to pick the right shape
+function createCompShape(id, radius, color) {
+  switch(id) {
+    case 'virus': return createVirusShape(radius, color);
+    case 'rbc':   return createRBCShape(radius, color);
+    case 'hair':  return createHairShape(radius, color);
+    case 'sand':  return createSandShape(radius, color);
+    default:      return createVirusShape(radius, color);
+  }
 }
 
 // Load LNP model
@@ -346,9 +461,9 @@ function showComparison(id) {
     camDist = fixedCompRadius * 3.5;
   }
   
-  const sphere = createCompSphere(sphereRadius, comp.color);
-  sphere.position.set(0, 0, 0);
-  compGroup.add(sphere);
+  const shape = createCompShape(id, sphereRadius, comp.color);
+  shape.position.set(0, 0, 0);
+  compGroup.add(shape);
   
   // Add a small label dot at LNP position for large ratios
   if (ratio > 10) {
