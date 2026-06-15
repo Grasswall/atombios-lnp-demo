@@ -106,10 +106,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
 // ──── RENDERER ────
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -125,11 +121,7 @@ scene.background = new THREE.Color(0x060910);
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth/window.innerHeight, 0.01, 500);
 camera.position.set(0, 0.6, 4.5);
 
-// ──── POST-PROCESSING (subtle bloom for glow) ────
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.4, 0.6, 0.85);
-composer.addPass(bloom);
+
 
 // ──── ENVIRONMENT MAP (procedural gradient for reflections) ────
 const envRT = new THREE.WebGLCubeRenderTarget(256);
@@ -379,7 +371,7 @@ function tick() {
   }
   controls.update();
   if (glowRing) glowRing.lookAt(camera.position);
-  composer.render();
+  renderer.render(scene, camera);
 }
 tick();
 
@@ -387,7 +379,6 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
 </body>
