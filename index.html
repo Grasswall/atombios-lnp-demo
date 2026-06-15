@@ -118,10 +118,17 @@
 
 <div id="chip-bar">
   <div class="chip active" data-id="none">LNP Only</div>
+  <div class="chip" data-id="bbb">BBB Gap</div>
   <div class="chip" data-id="doxil">Doxil® 100nm</div>
   <div class="chip" data-id="virus">Virus 100nm</div>
   <div class="chip" data-id="rbc">Red Blood Cell</div>
   <div class="chip" data-id="sand">Grain of Sand</div>
+</div>
+
+<!-- PIP inset for large-scale comparisons -->
+<div id="pip" style="display:none; position:absolute; bottom:120px; right:20px; width:140px; height:140px; border:2px solid rgba(0,229,255,0.5); border-radius:12px; overflow:hidden; background:rgba(6,9,16,0.9); box-shadow:0 0 20px rgba(0,229,255,0.2);">
+  <canvas id="pip-canvas" width="280" height="280" style="width:100%;height:100%;"></canvas>
+  <div style="position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:9px;color:#00e5ff;letter-spacing:1px;">OUR LNP • 20nm</div>
 </div>
 
 <!-- Three.js r137 (last UMD with examples/js/) -->
@@ -245,6 +252,97 @@
   // Doxil/Virus: radius 5 (true 5×)
   // RBC: radius 350 (true 350×)
   // Sand: radius 1500 (capped from 25000× for render, still dramatic)
+
+  /* Blood-Brain Barrier — tight junction cross-section showing LNP threading through */
+  function buildBBB() {
+    var g = new THREE.Group();
+
+    // Two endothelial cells (large slabs with gap between)
+    var cellMat = new THREE.MeshStandardMaterial({ color: 0x664488, roughness: 0.5, metalness: 0.05 });
+    var cellMat2 = new THREE.MeshStandardMaterial({ color: 0x553377, roughness: 0.6, metalness: 0.05 });
+
+    // Left cell wall
+    var leftGeo = new THREE.BoxGeometry(6, 10, 5);
+    var leftCell = new THREE.Mesh(leftGeo, cellMat);
+    leftCell.position.set(-3.6, 0, 0);
+    g.add(leftCell);
+
+    // Right cell wall
+    var rightGeo = new THREE.BoxGeometry(6, 10, 5);
+    var rightCell = new THREE.Mesh(rightGeo, cellMat2);
+    rightCell.position.set(3.6, 0, 0);
+    g.add(rightCell);
+
+    // Tight junction proteins (small lumps in the gap)
+    var tjMat = new THREE.MeshStandardMaterial({ color: 0xaa7733, roughness: 0.4, metalness: 0.2, emissive: 0x221100, emissiveIntensity: 0.15 });
+    for (var tj = 0; tj < 6; tj++) {
+      var tjY = -4 + tj * 1.6;
+      // Left side protrusion
+      var tjL = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), tjMat);
+      tjL.position.set(-0.4, tjY, (tj % 2 - 0.5) * 2);
+      tjL.scale.set(1.2, 0.7, 1);
+      g.add(tjL);
+      // Right side protrusion
+      var tjR = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), tjMat);
+      tjR.position.set(0.4, tjY, ((tj + 1) % 2 - 0.5) * 2);
+      tjR.scale.set(1.2, 0.7, 1);
+      g.add(tjR);
+    }
+
+    // Gap label area — the ~20nm channel (scaled: gap width = ~1.2 units = 20nm)
+    // Faint glow walls to highlight the gap
+    var glowMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide });
+    var glowLeft = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 10), glowMat);
+    glowLeft.position.set(-0.6, 0, 0);
+    g.add(glowLeft);
+    var glowRight = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 10), glowMat);
+    glowRight.position.set(0.6, 0, 0);
+    g.add(glowRight);
+
+    // Blocked Doxil liposome (100nm = radius 5 in our scale, but show it trying to enter from top)
+    // Show it as red-X blocked at gap = radius 2.5 scaled to fit visual
+    var blockedMat = new THREE.MeshStandardMaterial({ color: 0xff4444, transparent: true, opacity: 0.4, roughness: 0.3 });
+    var blocked = new THREE.Mesh(new THREE.SphereGeometry(2.5, 24, 24), blockedMat);
+    blocked.position.set(0, 6.5, 0);
+    g.add(blocked);
+    // X mark on blocked
+    var xMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    var xBar1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3, 0.15), xMat);
+    xBar1.position.set(0, 6.5, 2.6);
+    xBar1.rotation.z = Math.PI / 4;
+    g.add(xBar1);
+    var xBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3, 0.15), xMat);
+    xBar2.position.set(0, 6.5, 2.6);
+    xBar2.rotation.z = -Math.PI / 4;
+    g.add(xBar2);
+    // Label: "100nm Doxil — BLOCKED"
+
+    // Arrow showing LNP path through the gap (green trail)
+    var arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.4 });
+    for (var a = 0; a < 8; a++) {
+      var arrowDot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), arrowMat);
+      arrowDot.position.set(0, 4 - a * 1.2, 0);
+      g.add(arrowDot);
+    }
+    // Arrow head
+    var arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 8), arrowMat);
+    arrowHead.position.set(0, -5.5, 0);
+    arrowHead.rotation.x = Math.PI;
+    g.add(arrowHead);
+
+    // Cell nuclei (visual detail)
+    var nucMat = new THREE.MeshStandardMaterial({ color: 0x332255, roughness: 0.7, metalness: 0.05 });
+    var nucL = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), nucMat);
+    nucL.position.set(-4, 0, 0);
+    nucL.scale.set(1, 0.7, 1);
+    g.add(nucL);
+    var nucR = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), nucMat);
+    nucR.position.set(4, 0, 0);
+    nucR.scale.set(1, 0.7, 1);
+    g.add(nucR);
+
+    return g;
+  }
 
   /* Doxil® liposome — 100nm = 5× LNP. TRUE SCALE radius 5 */
   function buildDoxil() {
@@ -508,17 +606,19 @@
     return g;
   }
   comparisons.none   = null;
+  comparisons.bbb    = buildBBB();
   comparisons.doxil  = buildDoxil();
   comparisons.virus  = buildVirus();
   comparisons.rbc    = buildRBC();
   comparisons.sand   = buildSand();
 
   var DATA = {
-    none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5 },
-    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard. Our particle fits inside it — 5× smaller, 5× more precise.', cam: 14 },
-    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 14 },
-    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger',   desc: 'Our nanoparticle is an invisible speck beside a single blood cell.', cam: 900 },
-    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger', desc: 'The smallest thing you can see with the naked eye. We are 25,000× smaller.', cam: 4000 }
+    none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5, pip: false },
+    bbb:   { name: 'Blood-Brain Barrier',   size: 'Gap ~20 nm', ratio: 'WE FIT. They don\u2019t.',     desc: 'Tight junctions block particles >20nm. Our LNP threads through. Conventional liposomes (100nm) cannot.', cam: 12, pip: false },
+    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard. Our particle fits inside it — 5× smaller, 5× more precise.', cam: 14, pip: false },
+    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 14, pip: false },
+    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger',   desc: 'Our nanoparticle is an invisible speck beside a single blood cell.', cam: 900, pip: true },
+    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger', desc: 'The smallest thing you can see with the naked eye. We are 25,000× smaller.', cam: 4000, pip: true }
   };
 
   /* ─── Camera animation ──────────────────────────── */
@@ -580,6 +680,9 @@
 
     // Camera
     animateCamera(d.cam);
+
+    // PIP inset for large-scale comparisons
+    document.getElementById('pip').style.display = d.pip ? 'block' : 'none';
 
     // LNP badge
     document.getElementById('lnp-badge').classList.toggle('visible', id !== 'none');
@@ -665,6 +768,10 @@
 
         lnpGroup.add(model);
 
+        // Clone for PIP
+        pipLNP = model.clone();
+        pipScene.add(pipLNP);
+
         // Show UI
         document.getElementById('loader').style.display = 'none';
         document.getElementById('top-bar').classList.add('visible');
@@ -687,6 +794,31 @@
       showError('GLB load failed: ' + (err.message || err) + '\n\nMake sure lipo2.glb is served from the same directory.');
     }
   );
+
+  /* ─── PIP renderer (close-up of LNP for large-scale views) ─── */
+  var pipCanvas = document.getElementById('pip-canvas');
+  var pipRenderer = new THREE.WebGLRenderer({ canvas: pipCanvas, antialias: true, alpha: false });
+  pipRenderer.setPixelRatio(2);
+  pipRenderer.setSize(280, 280);
+  pipRenderer.outputEncoding = THREE.sRGBEncoding;
+  var pipCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+  pipCamera.position.set(0, 0.5, 4);
+  var pipScene = new THREE.Scene();
+  pipScene.background = new THREE.Color(0x0a0e16);
+  pipScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  var pipKey = new THREE.DirectionalLight(0xfff0e8, 2.0);
+  pipKey.position.set(3, 4, 5);
+  pipScene.add(pipKey);
+  var pipFill = new THREE.DirectionalLight(0x80c8ff, 1.0);
+  pipFill.position.set(-3, 1, -2);
+  pipScene.add(pipFill);
+  // PIP will clone lnpGroup once model loads
+  var pipLNP = null;
+  var pipGlowGeo = new THREE.RingGeometry(1.2, 1.4, 64);
+  var pipGlowMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  var pipGlow = new THREE.Mesh(pipGlowGeo, pipGlowMat);
+  pipGlow.lookAt(0, 0, 1);
+  pipScene.add(pipGlow);
 
   /* ─── Render loop ───────────────────────────────── */
   var clock = new THREE.Clock();
@@ -721,6 +853,13 @@
 
       controls.update();
       renderer.render(scene, camera);
+
+      // PIP render
+      if (DATA[currentComp] && DATA[currentComp].pip && pipLNP) {
+        pipGlow.material.opacity = 0.4 + 0.3 * Math.sin(clock.elapsedTime * 3);
+        pipLNP.rotation.y += dt * 0.5;
+        pipRenderer.render(pipScene, pipCamera);
+      }
     }
     tick();
   }
