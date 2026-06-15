@@ -244,14 +244,15 @@
 
   var comparisons = {};
 
-  // Visual cap: all comparisons max radius 3.5, shown BEHIND LNP as translucent ghost
-  // LNP (radius 1) always stays centered and prominent
-  var COMP_CAP = 3.5;
+  // Scale design: LNP radius=1. Comparisons at differentiated sizes.
+  // Doxil/Virus: radius 5 (true 5× scale, transparent shell around LNP)
+  // RBC: radius 8 (capped from 350×, semi-transparent)
+  // Sand: radius 12 (capped from 25000×, semi-transparent)
 
-  /* Doxil® liposome — 100nm = 5× LNP. Show at true scale (radius 5 capped to 3.5) */
+  /* Doxil® liposome — 100nm = 5× LNP. TRUE SCALE radius 5 */
   function buildDoxil() {
     var g = new THREE.Group();
-    var R = COMP_CAP;
+    var R = 5;
 
     // Outer bilayer shell
     var shellGeo = new THREE.SphereGeometry(R, 64, 64);
@@ -311,12 +312,12 @@
     return g;
   }
 
-  /* SARS-CoV-2 — 100nm = radius 5 (capped). Iconic crown morphology */
+  /* SARS-CoV-2 — 100nm = TRUE SCALE radius 5. Transparent so LNP shows inside */
   function buildVirus() {
     var g = new THREE.Group();
-    var R = COMP_CAP;
+    var R = 5;
 
-    // Lipid envelope - slightly rough, organic looking
+    // Lipid envelope - transparent, organic looking
     var envGeo = new THREE.IcosahedronGeometry(R * 0.75, 4);
     var envPos = envGeo.attributes.position;
     for (var i = 0; i < envPos.count; i++) {
@@ -325,12 +326,12 @@
       envPos.setXYZ(i, ex * bump, ey * bump, ez * bump);
     }
     envGeo.computeVertexNormals();
-    var envMat = new THREE.MeshStandardMaterial({ color: 0x667744, roughness: 0.6, metalness: 0.05 });
+    var envMat = new THREE.MeshStandardMaterial({ color: 0x667744, roughness: 0.6, metalness: 0.05, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
     g.add(new THREE.Mesh(envGeo, envMat));
 
     // M-protein matrix (subtle texture layer)
     var mGeo = new THREE.SphereGeometry(R * 0.76, 32, 32);
-    var mMat = new THREE.MeshStandardMaterial({ color: 0x556633, transparent: true, opacity: 0.3, side: THREE.BackSide, roughness: 0.8 });
+    var mMat = new THREE.MeshStandardMaterial({ color: 0x556633, transparent: true, opacity: 0.15, side: THREE.BackSide, roughness: 0.8 });
     g.add(new THREE.Mesh(mGeo, mMat));
 
     // Spike (S) glycoproteins — the iconic corona
@@ -397,10 +398,10 @@
     return g;
   }
 
-  /* Red Blood Cell — 7000nm = 350× LNP. Capped visual at radius 3.5 */
+  /* Red Blood Cell — 7000nm = 350× LNP. Capped visual at radius 8 */
   function buildRBC() {
     var g = new THREE.Group();
-    var R = COMP_CAP;
+    var R = 8;
 
     // Biconcave disc — parametric radial profile
     var S = 64, RINGS = 32;
@@ -453,10 +454,10 @@
     return g;
   }
 
-  /* Grain of Sand — 500,000nm = 25,000× LNP. Capped visual at radius 3.5 */
+  /* Grain of Sand — 500,000nm = 25,000× LNP. Capped visual at radius 12 */
   function buildSand() {
     var g = new THREE.Group();
-    var R = COMP_CAP;
+    var R = 12;
 
     // Irregular quartz grain — deformed icosahedron with facets
     var geo = new THREE.IcosahedronGeometry(R, 2);
@@ -517,10 +518,10 @@
 
   var DATA = {
     none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5 },
-    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard nanomedicine (FDA 1995). Our particle fits inside it — 5× smaller, 5× more precise.', cam: 10 },
-    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 10 },
-    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger than our LNP',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 10 },
-    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger than our LNP', desc: 'The smallest thing you can see. We are 25,000× smaller — invisible without electron microscopy.', cam: 10 }
+    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard. Our particle fits inside it — 5× smaller, 5× more precise.', cam: 14 },
+    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 14 },
+    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 22 },
+    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger', desc: 'The smallest thing visible to the naked eye. We are 25,000× smaller.', cam: 32 }
   };
 
   /* ─── Camera animation ──────────────────────────── */
