@@ -288,7 +288,11 @@ const scaleLabel = document.getElementById('scale-label');
 const scaleRatio = document.getElementById('scale-ratio');
 
 let currentId = 'lnp';
-const LNP_RADIUS = 1.25; // LNP model occupies ~1.25 units radius = 20nm
+// The LNP model is scaled so its diameter = 2.5 scene units (radius 1.25)
+// LNP real diameter = 20nm, so 1 scene unit = 8nm
+const LNP_DIAMETER_UNITS = 2.5;
+const LNP_DIAMETER_NM = 20;
+const NM_PER_UNIT = LNP_DIAMETER_NM / LNP_DIAMETER_UNITS; // 8nm per unit
 
 function showComparison(id) {
   currentId = id;
@@ -307,30 +311,64 @@ function showComparison(id) {
   // Clear previous comparison sphere
   while (compGroup.children.length) compGroup.remove(compGroup.children[0]);
   
+  // Reset LNP scale
+  if (lnpModel) lnpModel.scale.setScalar(lnpBaseScale);
+  
   if (id === 'lnp') {
-    // Reset camera to close view of LNP
     animateCamera(new THREE.Vector3(0, 2, 7), new THREE.Vector3(0, 0, 0));
     return;
   }
   
-  // Calculate comparison sphere radius in scene units
-  // LNP_RADIUS = 20nm, so 1 unit = 20/1.25 = 16nm
-  const nmPerUnit = 20 / LNP_RADIUS;
-  let sphereRadius = (comp.size / 2) / nmPerUnit;
+  // True scale ratio (diameter)
+  const ratio = comp.size / LNP_DIAMETER_NM;
   
-  // Cap visual size for readability but show true ratio in label
-  const maxVisualRadius = 12;
-  const actualRadius = sphereRadius;
-  if (sphereRadius > maxVisualRadius) sphereRadius = maxVisualRadius;
+  // For small ratios (virus = 5×), show at true scale side by side
+  // For large ratios, show comparison sphere at a fixed visual size
+  // and shrink the LNP to show how tiny it actually is
+  
+  let sphereRadius;
+  let lnpScale = lnpBaseScale;
+  let camDist;
+  
+  if (ratio <= 10) {
+    // True scale — both fit on screen
+    // Comparison sphere radius in scene units
+    sphereRadius = (comp.size / 2) / NM_PER_UNIT;
+    camDist = sphereRadius * 3.5;
+  } else {
+    // Fixed comparison sphere, shrink LNP proportionally
+    // Show comparison sphere at radius 4 units, LNP shrinks
+    const fixedCompRadius = 4;
+    sphereRadius = fixedCompRadius;
+    const shrinkFactor = 1 / ratio;
+    lnpScale = lnpBaseScale * (fixedCompRadius / (LNP_DIAMETER_UNITS / 2)) * shrinkFactor;
+    if (lnpModel) lnpModel.scale.setScalar(Math.max(lnpScale, lnpBaseScale * 0.01));
+    camDist = fixedCompRadius * 3.5;
+  }
   
   const sphere = createCompSphere(sphereRadius, comp.color);
-  sphere.position.set(0, 0, 0); // centered on same origin as LNP
+  sphere.position.set(0, 0, 0);
   compGroup.add(sphere);
   
-  // Pull camera back to show comparison
-  const camDist = Math.max(sphereRadius * 3, 7);
+  // Add a small label dot at LNP position for large ratios
+  if (ratio > 10) {
+    const dotGeom = new THREE.SphereGeometry(0.08, 16, 16);
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff });
+    const dot = new THREE.Mesh(dotGeom, dotMat);
+    dot.position.set(0, 0, sphereRadius + 0.3);
+    compGroup.add(dot);
+    
+    // Ring around the dot for visibility
+    const ringGeom = new THREE.RingGeometry(0.12, 0.16, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.position.copy(dot.position);
+    ring.lookAt(camera.position);
+    compGroup.add(ring);
+  }
+  
   animateCamera(
-    new THREE.Vector3(0, sphereRadius * 0.5, camDist),
+    new THREE.Vector3(0, sphereRadius * 0.4, camDist),
     new THREE.Vector3(0, 0, 0)
   );
 }
