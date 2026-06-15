@@ -124,12 +124,10 @@
   <div class="chip" data-id="sand">Grain of Sand</div>
 </div>
 
-<!-- Three.js r160 (UMD) — no importmap, no ES modules -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<!-- GLTFLoader as UMD addon -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-<!-- OrbitControls UMD -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<!-- Three.js r137 (last UMD with examples/js/) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
 (function() {
@@ -164,7 +162,7 @@
   var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(W, H);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = false;
   document.getElementById('canvas-container').appendChild(renderer.domElement);
 
