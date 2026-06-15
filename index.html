@@ -220,10 +220,19 @@
   scene.add(lnpGroup);
 
   var glowRing = (function() {
-    var geo = new THREE.RingGeometry(1.35, 1.55, 64);
-    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    var geo = new THREE.RingGeometry(1.25, 1.45, 64);
+    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
     var mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2;
+    mesh.visible = false;
+    lnpGroup.add(mesh);
+    return mesh;
+  })();
+  // Second ring perpendicular for visibility from any angle
+  var glowRing2 = (function() {
+    var geo = new THREE.RingGeometry(1.25, 1.45, 64);
+    var mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.y = Math.PI / 2;
     mesh.visible = false;
     lnpGroup.add(mesh);
     return mesh;
@@ -242,7 +251,7 @@
     // Outer liposome shell (semi-transparent)
     var shellGeo = new THREE.SphereGeometry(5, 40, 40);
     var shellMat = new THREE.MeshStandardMaterial({
-      color: 0xff8844, transparent: true, opacity: 0.12,
+      color: 0xff8844, transparent: true, opacity: 0.08,
       side: THREE.DoubleSide, roughness: 0.3, metalness: 0
     });
     g.add(new THREE.Mesh(shellGeo, shellMat));
@@ -308,7 +317,7 @@
 
     // Envelope
     var envGeo = new THREE.SphereGeometry(5, 36, 36);
-    var envMat = new THREE.MeshStandardMaterial({ color: 0xcc3355, transparent: true, opacity: 0.55, roughness: 0.7, metalness: 0 });
+    var envMat = new THREE.MeshStandardMaterial({ color: 0xcc3355, transparent: true, opacity: 0.35, roughness: 0.7, metalness: 0 });
     g.add(new THREE.Mesh(envGeo, envMat));
 
     // Spike proteins
@@ -428,11 +437,11 @@
   comparisons.sand   = buildSand();
 
   var DATA = {
-    none:  { name: 'Our LNP (alone)',   size: '~20 nm diameter', ratio: 'Reference particle',           desc: 'Atom Bios lipid nanoparticle for precision drug delivery', cam: 5 },
-    doxil: { name: 'Doxil® Liposome',   size: '~100 nm diameter', ratio: '5× larger than our LNP',     desc: 'FDA-approved liposomal doxorubicin — 5× the size, less control', cam: 14 },
-    virus: { name: 'SARS-CoV-2',        size: '~100 nm diameter', ratio: '5× larger than our LNP',     desc: 'Coronavirus at true scale — our LNP is equally sized for efficient cell entry', cam: 14 },
-    rbc:   { name: 'Red Blood Cell',    size: '~7,000 nm (7 µm)', ratio: '350× larger than our LNP',   desc: 'Shown at capped visual scale (350× too large to display accurately)', cam: 18 },
-    sand:  { name: 'Grain of Sand',     size: '~500,000 nm (0.5 mm)', ratio: '25,000× larger than LNP', desc: 'Shown at capped visual scale (25,000× too large to display accurately)', cam: 18 }
+    none:  { name: 'Our LNP',   size: '~20 nm', ratio: '',           desc: 'Atom Bios lipid nanoparticle — precision drug delivery at the atomic scale', cam: 4.5 },
+    doxil: { name: 'vs. Doxil® Liposome',   size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Current gold standard nanomedicine (FDA 1995). Our particle fits inside it — 5× smaller, 5× more precise.', cam: 12 },
+    virus: { name: 'vs. SARS-CoV-2',        size: '100 nm', ratio: '5× larger than our LNP',     desc: 'Same scale as conventional nanomedicine. We operate below the virus threshold.', cam: 12 },
+    rbc:   { name: 'vs. Red Blood Cell',    size: '7 µm', ratio: '350× larger than our LNP',   desc: 'Our nanoparticle flows freely through capillaries where these cells barely squeeze through.', cam: 14 },
+    sand:  { name: 'vs. Grain of Sand',     size: '0.5 mm', ratio: '25,000× larger than our LNP', desc: 'The smallest thing you can see. We are 25,000× smaller — invisible without electron microscopy.', cam: 14 }
   };
 
   /* ─── Camera animation ──────────────────────────── */
@@ -466,8 +475,9 @@
       compGroup.add(comparisons[id]);
     }
 
-    // Glow ring
+    // Glow ring — both rings
     glowRing.visible = (id !== 'none');
+    glowRing2.visible = (id !== 'none');
 
     // Update chips
     var chips = document.querySelectorAll('.chip');
@@ -600,10 +610,14 @@
       requestAnimationFrame(tick);
       var dt = clock.getDelta();
 
-      // Slow glow ring pulse
+      // Glow ring always faces camera and pulses
       if (glowRing.visible) {
-        glowRing.material.opacity = 0.4 + 0.2 * Math.sin(clock.elapsedTime * 2.5);
-        glowRing.rotation.y += dt * 0.4;
+        glowRing.lookAt(camera.position);
+        glowRing2.lookAt(camera.position);
+        glowRing2.rotation.y += Math.PI / 3;
+        var pulse = 0.5 + 0.25 * Math.sin(clock.elapsedTime * 2.5);
+        glowRing.material.opacity = pulse;
+        glowRing2.material.opacity = pulse * 0.7;
       }
 
       // Slow rotation for comparison objects
