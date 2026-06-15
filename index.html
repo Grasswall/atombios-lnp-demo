@@ -3,93 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Atom Bios — LNP Scale Comparison</title>
+<title>Atom Bios — LNP Drug Delivery</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  background: #0d1117; color: #fff;
-  overflow: hidden; touch-action: none;
-  height: 100vh;
+  background: #080b10; color: #fff;
+  overflow: hidden; touch-action: none; height: 100vh;
 }
-#canvas { width: 100vw; height: 100vh; display: block; }
+canvas { display: block; width: 100vw; height: 100vh; }
 
-.top-bar {
+/* Loader */
+#loader {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+  background: #080b10;
+  transition: opacity 0.6s;
+}
+#loader.done { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid rgba(0,212,255,0.15);
+  border-top-color: #00d4ff;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loader p { font-size: 11px; color: #555; }
+
+/* Top */
+.hud-top {
   position: fixed; top: 0; left: 0; right: 0;
   padding: 16px 20px; z-index: 100;
-  background: linear-gradient(to bottom, rgba(13,17,23,0.95) 60%, transparent);
+  background: linear-gradient(to bottom, rgba(8,11,16,0.92) 50%, transparent);
 }
-.top-bar h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
-.top-bar p { font-size: 10px; color: #555; margin-top: 3px; }
+.hud-top h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; opacity: 0.9; }
+.hud-top .sub { font-size: 10px; color: #555; margin-top: 2px; }
 
-/* Info panel */
+/* Info */
 .info {
-  position: fixed; bottom: 96px; left: 0; right: 0;
-  text-align: center; z-index: 100;
-  pointer-events: none;
-  transition: opacity 0.4s;
+  position: fixed; bottom: 88px; left: 0; right: 0;
+  text-align: center; z-index: 100; pointer-events: none;
 }
-.info .name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.info .name { font-size: 15px; font-weight: 500; color: #ddd; margin-bottom: 4px; transition: all 0.3s; }
 .info .size {
-  font-size: 30px; font-weight: 700;
-  background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+  font-size: 34px; font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #7b4fff);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  transition: all 0.3s;
 }
-.info .ratio { font-size: 12px; color: #00d4ff; margin-top: 6px; font-weight: 500; }
-.info .desc { font-size: 11px; color: #666; margin-top: 6px; max-width: 300px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+.info .ratio {
+  font-size: 12px; color: #00d4ff; margin-top: 5px;
+  opacity: 0; transition: opacity 0.3s;
+}
+.info .ratio.show { opacity: 1; }
 
-/* Bottom bar */
+/* Bar */
 .bar {
-  position: fixed; bottom: 14px; left: 0; right: 0;
-  display: flex; gap: 6px; padding: 0 10px;
+  position: fixed; bottom: 12px; left: 0; right: 0;
+  display: flex; gap: 5px; padding: 0 8px;
   overflow-x: auto; z-index: 100;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 .bar::-webkit-scrollbar { display: none; }
-.card {
+.chip {
   flex-shrink: 0;
   padding: 8px 12px; border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
-  cursor: pointer; transition: all 0.25s;
-  text-align: center; min-width: 72px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: all 0.2s;
+  text-align: center; min-width: 68px;
 }
-.card.active { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.5); }
-.card .icon { font-size: 16px; }
-.card .cname { font-size: 9px; color: #aaa; margin-top: 2px; white-space: nowrap; }
-.card .csize { font-size: 8px; color: #555; margin-top: 1px; }
+.chip.on { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.4); }
+.chip .ci { font-size: 15px; }
+.chip .cn { font-size: 9px; color: #999; margin-top: 2px; }
+.chip .cs { font-size: 8px; color: #444; }
 </style>
 </head>
 <body>
 
-<div class="top-bar">
-  <h1>Atom Bios — LNP Drug Delivery</h1>
-  <p>Drag to rotate · Pinch to zoom · Tap items to compare</p>
+<div id="loader">
+  <div class="spinner"></div>
+  <p id="load-pct">Loading model…</p>
 </div>
 
-<div class="info" id="info">
-  <div class="name" id="info-name">Our Lipid Nanoparticle</div>
-  <div class="size" id="info-size">~20 nm</div>
-  <div class="ratio" id="info-ratio"></div>
-  <div class="desc" id="info-desc">Our engineered nanoparticle. Small enough to cross the blood-brain barrier.</div>
+<div class="hud-top">
+  <h1>ATOM BIOS — Lipid Nanoparticle</h1>
+  <div class="sub">Pinch to zoom · Drag to rotate · Tap to compare</div>
+</div>
+
+<div class="info">
+  <div class="name" id="i-name">Our LNP</div>
+  <div class="size" id="i-size">~20 nm</div>
+  <div class="ratio" id="i-ratio"></div>
 </div>
 
 <div class="bar">
-  <div class="card active" data-id="lnp"><div class="icon">💊</div><div class="cname">Our LNP</div><div class="csize">20 nm</div></div>
-  <div class="card" data-id="liposome"><div class="icon">🫧</div><div class="cname">Doxil®</div><div class="csize">100 nm</div></div>
-  <div class="card" data-id="virus"><div class="icon">🦠</div><div class="cname">SARS-CoV-2</div><div class="csize">100 nm</div></div>
-  <div class="card" data-id="rbc"><div class="icon">🔴</div><div class="cname">Red Blood Cell</div><div class="csize">7 µm</div></div>
-  <div class="card" data-id="hair"><div class="icon">〰️</div><div class="cname">Hair</div><div class="csize">80 µm</div></div>
-  <div class="card" data-id="sand"><div class="icon">⏳</div><div class="cname">Sand</div><div class="csize">500 µm</div></div>
+  <div class="chip on" data-id="lnp"><div class="ci">💊</div><div class="cn">Our LNP</div><div class="cs">20 nm</div></div>
+  <div class="chip" data-id="liposome"><div class="ci">🫧</div><div class="cn">Doxil®</div><div class="cs">100 nm</div></div>
+  <div class="chip" data-id="virus"><div class="ci">🦠</div><div class="cn">SARS-CoV-2</div><div class="cs">100 nm</div></div>
+  <div class="chip" data-id="rbc"><div class="ci">🔴</div><div class="cn">Red Blood Cell</div><div class="cs">7 µm</div></div>
+  <div class="chip" data-id="hair"><div class="ci">〰️</div><div class="cn">Human Hair</div><div class="cs">80 µm</div></div>
+  <div class="chip" data-id="sand"><div class="ci">⏳</div><div class="cn">Grain of Sand</div><div class="cs">500 µm</div></div>
 </div>
-
-<div id="loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:999;background:#0d1117;flex-direction:column;gap:12px;transition:opacity 0.5s">
-  <div style="width:36px;height:36px;border-radius:50%;border:3px solid rgba(0,212,255,0.2);border-top-color:#00d4ff;animation:spin 1s linear infinite"></div>
-  <div style="font-size:12px;color:#666" id="load-text">Loading model...</div>
-</div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-<canvas id="canvas"></canvas>
 
 <script type="importmap">
 {
@@ -103,269 +120,299 @@ body {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-const canvas = document.getElementById('canvas');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d1117);
-
-const camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.001, 2000);
-camera.position.set(0, 1, 5);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+// ──── RENDERER ────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.4;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-const dir = new THREE.DirectionalLight(0xffffff, 1.3);
-dir.position.set(4, 8, 6); scene.add(dir);
-const fill = new THREE.DirectionalLight(0x4488ff, 0.4);
-fill.position.set(-4, -2, -3); scene.add(fill);
-const rim = new THREE.PointLight(0x00d4ff, 0.6, 20);
-rim.position.set(-2, 4, -4); scene.add(rim);
-// Back light to give depth
-const back = new THREE.DirectionalLight(0xffffff, 0.5);
-back.position.set(0, -3, -6); scene.add(back);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080b10);
 
-const controls = new OrbitControls(camera, canvas);
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth/window.innerHeight, 0.01, 500);
+camera.position.set(0, 0.8, 5);
+
+// ──── LIGHTING (cinematic 3-point + env) ────
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(3, 6, 5); scene.add(key);
+const fill = new THREE.DirectionalLight(0x6699ff, 0.6);
+fill.position.set(-4, 2, -2); scene.add(fill);
+const back = new THREE.DirectionalLight(0xffffff, 0.7);
+back.position.set(0, -2, -5); scene.add(back);
+const accent = new THREE.PointLight(0x00d4ff, 0.5, 12);
+accent.position.set(2, 3, -3); scene.add(accent);
+
+// ──── CONTROLS ────
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.06;
+controls.dampingFactor = 0.07;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.6;
+controls.autoRotateSpeed = 0.7;
 controls.enablePan = false;
+controls.minDistance = 2;
+controls.maxDistance = 25;
 
-// --- DATA ---
-const items = {
-  lnp:      { size: 20,     name: 'Our Lipid Nanoparticle', ratio: '', desc: 'Our engineered nanoparticle. Small enough to cross the blood-brain barrier and deliver drugs directly into cells.' },
-  liposome: { size: 100,    name: 'Conventional Liposome (Doxil®)', ratio: '5× larger than our LNP', desc: 'The gold standard in nanomedicine since 1995. PEGylated liposome for cancer therapy. We are 5× smaller than this.' },
-  virus:    { size: 100,    name: 'SARS-CoV-2', ratio: '5× larger than our LNP', desc: 'The pandemic virus. Same scale as conventional liposomes. Requires electron microscopy to visualise.' },
-  rbc:      { size: 7000,   name: 'Red Blood Cell', ratio: '350× larger than our LNP', desc: 'Our nanoparticle flows through capillaries where these cells barely squeeze through. We pass unnoticed.' },
-  hair:     { size: 80000,  name: 'Human Hair (cross-section)', ratio: '4,000× larger than our LNP', desc: '4,000 of our particles could line up across one strand. We operate at a scale invisible to optical microscopy.' },
-  sand:     { size: 500000, name: 'Grain of Sand', ratio: '25,000× larger than our LNP', desc: '25,000× smaller than something you can barely see. We exist at the boundary between chemistry and biology.' }
+// ──── DATA ────
+const data = {
+  lnp:      { nm: 20,     label: 'Our LNP', ratio: '' },
+  liposome: { nm: 100,    label: 'Conventional Liposome (Doxil®)', ratio: '5× larger than our LNP' },
+  virus:    { nm: 100,    label: 'SARS-CoV-2 Virus', ratio: '5× larger than our LNP' },
+  rbc:      { nm: 7000,   label: 'Red Blood Cell', ratio: '350× larger than our LNP' },
+  hair:     { nm: 80000,  label: 'Human Hair', ratio: '4,000× larger than our LNP' },
+  sand:     { nm: 500000, label: 'Grain of Sand', ratio: '25,000× larger than our LNP' },
 };
 
-// --- MODEL BUILDERS (unit radius ~1) ---
-function buildLiposome() {
-  const g = new THREE.Group();
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(1,48,48), new THREE.MeshPhysicalMaterial({color:0x4488cc,roughness:0.2,transparent:true,opacity:0.4,clearcoat:0.3})));
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.82,48,48), new THREE.MeshPhysicalMaterial({color:0x2266aa,roughness:0.3,transparent:true,opacity:0.2,side:THREE.BackSide})));
-  const hM = new THREE.MeshStandardMaterial({color:0x88ccff,roughness:0.4});
-  for(let i=0;i<200;i++){const phi=Math.acos(1-2*(i+0.5)/200),t=Math.PI*(1+Math.sqrt(5))*i;const h=new THREE.Mesh(new THREE.SphereGeometry(0.03,5,5),hM);h.position.setFromSphericalCoords(1.02,phi,t);g.add(h);}
-  const pM = new THREE.MeshBasicMaterial({color:0xaaddff,transparent:true,opacity:0.4});
-  for(let i=0;i<40;i++){const phi=Math.acos(1-2*(i+0.5)/40),t=Math.PI*(1+Math.sqrt(5))*i;const p=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.18,4),pM);const pos=new THREE.Vector3().setFromSphericalCoords(1.11,phi,t);p.position.copy(pos);p.lookAt(0,0,0);p.rotateX(Math.PI/2);g.add(p);const tip=new THREE.Mesh(new THREE.SphereGeometry(0.02,4,4),pM);tip.position.copy(new THREE.Vector3().setFromSphericalCoords(1.2,phi,t));g.add(tip);}
-  const cM=new THREE.MeshStandardMaterial({color:0xff5533,emissive:0xff2200,emissiveIntensity:0.3});
-  for(let i=0;i<18;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),cM);c.position.set((Math.random()-0.5)*1.2,(Math.random()-0.5)*1.2,(Math.random()-0.5)*1.2);if(c.position.length()<0.7)g.add(c);}
-  return g;
-}
+// ──── LNP (anchor — always radius 1 in scene units) ────
+const LNP_R = 1; // scene units = 20nm
+const lnpGroup = new THREE.Group(); scene.add(lnpGroup);
+const compGroup = new THREE.Group(); scene.add(compGroup);
 
-function buildVirus() {
-  const g = new THREE.Group();
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.8,48,48), new THREE.MeshPhysicalMaterial({color:0x337744,roughness:0.4,clearcoat:0.2})));
-  const bM=new THREE.MeshStandardMaterial({color:0x448855,roughness:0.5});
-  for(let i=0;i<80;i++){const phi=Math.acos(1-2*(i+0.5)/80),t=Math.PI*(1+Math.sqrt(5))*i;const b=new THREE.Mesh(new THREE.SphereGeometry(0.035,5,5),bM);b.position.setFromSphericalCoords(0.82,phi,t);g.add(b);}
-  const sM=new THREE.MeshStandardMaterial({color:0x66cc77,roughness:0.4}),tM=new THREE.MeshStandardMaterial({color:0x99ffaa,roughness:0.3});
-  for(let i=0;i<35;i++){const phi=Math.acos(1-2*(i+0.5)/35),t=Math.PI*(1+Math.sqrt(5))*i;const d=new THREE.Vector3().setFromSphericalCoords(1,phi,t).normalize();
-    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.015,0.3,6),sM);stem.position.copy(d.clone().multiplyScalar(0.95));stem.lookAt(d.clone().multiplyScalar(2));stem.rotateX(Math.PI/2);g.add(stem);
-    const hp=d.clone().multiplyScalar(1.15);for(let j=0;j<3;j++){const l=new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6),tM);const a=(j/3)*Math.PI*2;l.position.copy(hp).add(new THREE.Vector3(Math.cos(a)*0.03,Math.sin(a)*0.03,0));g.add(l);}}
-  const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(-0.3,-0.2,0),new THREE.Vector3(0,0.25,0.2),new THREE.Vector3(0.25,-0.15,-0.15),new THREE.Vector3(-0.15,0.1,-0.25),new THREE.Vector3(0.1,-0.1,0.15)],true);
-  g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,50,0.02,8,true),new THREE.MeshBasicMaterial({color:0xffcc44,transparent:true,opacity:0.35})));
-  return g;
-}
+// ──── LOAD GLB ────
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(draco);
 
-function buildRBC() {
-  const g = new THREE.Group();
-  const S=64,R=32,v=[],idx=[];
-  for(let j=0;j<=R;j++){const r=(j/R)*1.2;for(let i=0;i<=S;i++){const t=(i/S)*Math.PI*2;const rN=r/1.2;const y=0.3*(rN*rN-1)*(rN*rN-0.4);v.push(Math.cos(t)*r,y,Math.sin(t)*r);}}
-  for(let j=0;j<R;j++)for(let i=0;i<S;i++){const a=j*(S+1)+i,b=a+1,c=a+S+1,d=c+1;idx.push(a,c,b,b,c,d);}
-  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));geo.setIndex(idx);geo.computeVertexNormals();
-  const mat=new THREE.MeshPhysicalMaterial({color:0xcc2222,roughness:0.3,clearcoat:0.4,side:THREE.DoubleSide});
-  g.add(new THREE.Mesh(geo,mat));const m2=new THREE.Mesh(geo,mat);m2.scale.y=-1;g.add(m2);
-  g.rotation.x=0.3;
-  return g;
-}
+let lnpMesh = null;
 
-function buildHair() {
-  const g = new THREE.Group();
-  for(let i=0;i<5;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(1-i*0.03,0.025,8,48),new THREE.MeshStandardMaterial({color:0x8b6914,roughness:0.6,transparent:true,opacity:0.7-i*0.1}));r.rotation.x=Math.PI/2;g.add(r);}
-  const cx=new THREE.Mesh(new THREE.CylinderGeometry(0.82,0.82,0.3,48),new THREE.MeshStandardMaterial({color:0xa07818,roughness:0.5}));cx.rotation.x=Math.PI/2;g.add(cx);
-  for(let i=0;i<30;i++){const a=(i/30)*Math.PI*2,r=0.3+Math.random()*0.4;const f=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.32,4),new THREE.MeshStandardMaterial({color:0x7a5818}));f.position.set(Math.cos(a)*r,0,Math.sin(a)*r);f.rotation.x=Math.PI/2;g.add(f);}
-  const md=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.35,16),new THREE.MeshStandardMaterial({color:0x4a3008,roughness:0.8}));md.rotation.x=Math.PI/2;g.add(md);
-  return g;
-}
-
-function buildSand() {
-  const g = new THREE.Group();
-  const geo=new THREE.IcosahedronGeometry(1,3);const pos=geo.attributes.position;
-  for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);const n=0.75+0.5*(Math.sin(x*5.1+y*3.7)*Math.cos(z*4.3+x*2.9)*0.5+0.5);pos.setXYZ(i,x*n,y*n,z*n);}
-  geo.computeVertexNormals();
-  g.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xc9a84c,roughness:0.85,flatShading:true})));
-  for(let i=0;i<20;i++){const p=new THREE.Mesh(new THREE.SphereGeometry(0.05,5,5),new THREE.MeshStandardMaterial({color:0x8a6b20,roughness:1}));p.position.setFromSphericalCoords(1.0,Math.random()*Math.PI,Math.random()*Math.PI*2);g.add(p);}
-  return g;
-}
-
-// --- SCENE MANAGEMENT ---
-// LNP is always centered at a fixed visual size (the anchor)
-const LNP_VISUAL_RADIUS = 1.0; // scene units — LNP always this size
-const compGroup = new THREE.Group();
-scene.add(compGroup);
-const lnpGroup = new THREE.Group();
-scene.add(lnpGroup);
-
-// Pre-build comparison models
-const compModels = {
-  liposome: buildLiposome(),
-  virus: buildVirus(),
-  rbc: buildRBC(),
-  hair: buildHair(),
-  sand: buildSand()
-};
-
-// Load LNP
-let lnpModel = null;
-const lnpLoader = new GLTFLoader();
-lnpLoader.load('lipo2.glb', (gltf) => {
-  lnpModel = gltf.scene;
-  const box = new THREE.Box3().setFromObject(lnpModel);
+gltfLoader.load('lipo2.glb', (gltf) => {
+  lnpMesh = gltf.scene;
+  const box = new THREE.Box3().setFromObject(lnpMesh);
   const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const s = (LNP_VISUAL_RADIUS * 2) / maxDim;
-  lnpModel.scale.setScalar(s);
-  // Center the model at origin (don't mutate center before using it)
-  lnpModel.position.set(-center.x * s, -center.y * s, -center.z * s);
-  lnpGroup.add(lnpModel);
-  
-  // Hide loader
-  document.getElementById('loader').style.opacity = '0';
-  setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-}, (progress) => {
-  if (progress.total) {
-    const pct = Math.round(progress.loaded / progress.total * 100);
-    document.getElementById('load-text').textContent = `Loading model... ${pct}%`;
-  }
-}, (error) => {
-  console.error('GLB load error:', error);
-  document.getElementById('load-text').textContent = 'Error loading model';
+  const sz = box.getSize(new THREE.Vector3());
+  const s = (LNP_R * 2) / Math.max(sz.x, sz.y, sz.z);
+  lnpMesh.scale.setScalar(s);
+  lnpMesh.position.set(-center.x * s, -center.y * s, -center.z * s);
+  lnpGroup.add(lnpMesh);
+  document.getElementById('loader').classList.add('done');
+}, (p) => {
+  if (p.total) document.getElementById('load-pct').textContent = `Loading… ${Math.round(p.loaded/p.total*100)}%`;
+}, () => {
+  document.getElementById('load-pct').textContent = 'Load failed — refresh';
 });
 
-// --- CAMERA ANIMATION ---
-let camTargetPos = new THREE.Vector3(0, 1, 5);
-let camTargetLook = new THREE.Vector3(0, 0, 0);
-let animating = false;
+// ──── COMPARISON MODEL BUILDERS ────
 
-function animateCamera(pos, look, duration = 1.0) {
-  const startPos = camera.position.clone();
-  const startLook = controls.target.clone();
-  const startTime = performance.now();
-  animating = true;
-  
-  function step() {
-    const elapsed = (performance.now() - startTime) / 1000;
-    const t = Math.min(elapsed / duration, 1);
-    const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
-    
-    camera.position.lerpVectors(startPos, pos, ease);
-    controls.target.lerpVectors(startLook, look, ease);
-    
-    if (t < 1) requestAnimationFrame(step);
-    else animating = false;
+function buildLiposome(r) {
+  const g = new THREE.Group();
+  // Outer bilayer
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 48, 48),
+    new THREE.MeshPhysicalMaterial({color:0x3388cc, roughness:0.15, transmission:0.4, thickness:r*0.2, transparent:true, opacity:0.55, clearcoat:0.3, ior:1.3})));
+  // Inner layer
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(r*0.78, 32, 32),
+    new THREE.MeshPhysicalMaterial({color:0x225588, transparent:true, opacity:0.2, side:THREE.BackSide})));
+  // Lipid head dots
+  const hm = new THREE.MeshStandardMaterial({color:0xaaddff});
+  for (let i = 0; i < 160; i++) {
+    const phi = Math.acos(1-2*(i+0.5)/160), th = Math.PI*(1+Math.sqrt(5))*i;
+    const h = new THREE.Mesh(new THREE.SphereGeometry(r*0.022, 5, 5), hm);
+    h.position.setFromSphericalCoords(r*1.01, phi, th); g.add(h);
   }
-  step();
+  // PEG brushes
+  const pm = new THREE.MeshBasicMaterial({color:0xccffff, transparent:true, opacity:0.35});
+  for (let i = 0; i < 30; i++) {
+    const phi = Math.acos(1-2*(i+0.5)/30), th = Math.PI*(1+Math.sqrt(5))*i;
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(r*0.006, r*0.006, r*0.15, 4), pm);
+    const p = new THREE.Vector3().setFromSphericalCoords(r*1.08, phi, th);
+    c.position.copy(p); c.lookAt(0,0,0); c.rotateX(Math.PI/2); g.add(c);
+  }
+  // Drug cargo
+  const cm = new THREE.MeshStandardMaterial({color:0xff4422, emissive:0xff2200, emissiveIntensity:0.4});
+  for (let i = 0; i < 12; i++) {
+    const c = new THREE.Mesh(new THREE.SphereGeometry(r*0.05, 6, 6), cm);
+    c.position.randomDirection().multiplyScalar(Math.random()*r*0.55); g.add(c);
+  }
+  return g;
 }
 
-// --- SWITCHING ---
-let currentId = 'lnp';
+function buildVirus(r) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(r*0.7, 48, 48),
+    new THREE.MeshPhysicalMaterial({color:0x2a6644, roughness:0.35, clearcoat:0.3})));
+  // Bumps
+  const bm = new THREE.MeshStandardMaterial({color:0x3d8855});
+  for (let i = 0; i < 80; i++) {
+    const phi = Math.acos(1-2*(i+0.5)/80), th = Math.PI*(1+Math.sqrt(5))*i;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r*0.03, 5, 5), bm);
+    b.position.setFromSphericalCoords(r*0.72, phi, th); g.add(b);
+  }
+  // Spikes
+  const sm = new THREE.MeshStandardMaterial({color:0x55cc77}), tm = new THREE.MeshStandardMaterial({color:0x88ffaa});
+  for (let i = 0; i < 30; i++) {
+    const phi = Math.acos(1-2*(i+0.5)/30), th = Math.PI*(1+Math.sqrt(5))*i;
+    const d = new THREE.Vector3().setFromSphericalCoords(1, phi, th).normalize();
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(r*0.015, r*0.012, r*0.25, 5), sm);
+    st.position.copy(d.clone().multiplyScalar(r*0.82)); st.lookAt(d.clone().multiplyScalar(r*2)); st.rotateX(Math.PI/2); g.add(st);
+    for (let j = 0; j < 3; j++) {
+      const l = new THREE.Mesh(new THREE.SphereGeometry(r*0.035, 6, 6), tm);
+      const a = (j/3)*Math.PI*2;
+      l.position.copy(d.clone().multiplyScalar(r*0.97)).add(new THREE.Vector3(Math.cos(a)*r*0.025, Math.sin(a)*r*0.025, 0)); g.add(l);
+    }
+  }
+  return g;
+}
 
-function showItem(id) {
-  currentId = id;
-  const item = items[id];
-  
-  // UI
-  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
-  document.getElementById('info-name').textContent = item.name;
-  document.getElementById('info-size').textContent = item.size >= 1000 ? `~${(item.size/1000).toLocaleString()} µm` : `~${item.size} nm`;
-  document.getElementById('info-ratio').textContent = item.ratio;
-  document.getElementById('info-desc').textContent = item.desc;
-  
-  // Clear comparison
+function buildRBC(r) {
+  const g = new THREE.Group();
+  const S=48, R=24, v=[], idx=[];
+  for (let j=0;j<=R;j++){const rad=(j/R)*r;for(let i=0;i<=S;i++){const t=(i/S)*Math.PI*2;const rN=rad/r;const y=r*0.22*(rN*rN-1)*(rN*rN-0.38);v.push(Math.cos(t)*rad,y,Math.sin(t)*rad);}}
+  for(let j=0;j<R;j++)for(let i=0;i<S;i++){const a=j*(S+1)+i;idx.push(a,a+S+1,a+1,a+1,a+S+1,a+S+2);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));geo.setIndex(idx);geo.computeVertexNormals();
+  const mat=new THREE.MeshPhysicalMaterial({color:0xcc2020,roughness:0.25,clearcoat:0.5,side:THREE.DoubleSide});
+  g.add(new THREE.Mesh(geo,mat));const b=new THREE.Mesh(geo,mat);b.scale.y=-1;g.add(b);
+  g.rotation.x=0.35;
+  return g;
+}
+
+function buildHair(r) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:0x9a7520, roughness:0.5});
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r, r, r*2.5, 48), mat));
+  // Cuticle rings
+  for (let i=0;i<6;i++){
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(r*(1-i*0.01), r*0.015, 8, 48),
+      new THREE.MeshStandardMaterial({color:0x7a5818, transparent:true, opacity:0.5-i*0.06})));
+  }
+  // Medulla
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r*0.18, r*0.18, r*2.6, 16),
+    new THREE.MeshStandardMaterial({color:0x3d2808, roughness:0.9})));
+  g.rotation.x = Math.PI/2; g.rotation.z = 0.2;
+  return g;
+}
+
+function buildSand(r) {
+  const g = new THREE.Group();
+  const geo = new THREE.IcosahedronGeometry(r, 3);
+  const pos = geo.attributes.position;
+  for (let i=0;i<pos.count;i++){
+    const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+    const n=0.7+0.6*(Math.sin(x*4+y*3)*Math.cos(z*5+x*2)*0.5+0.5);
+    pos.setXYZ(i,x*n,y*n,z*n);
+  }
+  geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0xbfa048, roughness:0.8, flatShading:true})));
+  return g;
+}
+
+// ──── SWITCH LOGIC ────
+// KEY DESIGN: LNP stays fixed. Comparison appears around/beside it at true ratio.
+// For ratios ≤ 5: both visible at true scale, comparison semi-transparent around LNP.
+// For ratios > 5: comparison shown at capped visual size, LNP stays fixed, 
+//   ratio communicated by text + visual trick (comparison fills frame, LNP highlighted with glow ring).
+
+let currentComp = null;
+let glowRing = null;
+
+function clearComp() {
   while (compGroup.children.length) compGroup.remove(compGroup.children[0]);
-  
-  // LNP always stays centered at LNP_VISUAL_RADIUS
+  if (glowRing) { lnpGroup.remove(glowRing); glowRing = null; }
+}
+
+function addGlowRing() {
+  // Pulsing ring around LNP so it's never lost in the scene
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(LNP_R * 1.2, LNP_R * 1.35, 64),
+    new THREE.MeshBasicMaterial({color: 0x00d4ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide})
+  );
+  ring.lookAt(camera.position);
+  glowRing = ring;
+  lnpGroup.add(ring);
+}
+
+function show(id) {
+  clearComp();
+  const d = data[id];
+
+  // UI
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.id === id));
+  document.getElementById('i-name').textContent = d.label;
+  document.getElementById('i-size').textContent = d.nm >= 1000 ? `~${d.nm/1000} µm` : `~${d.nm} nm`;
+  const ratioEl = document.getElementById('i-ratio');
+  ratioEl.textContent = d.ratio;
+  ratioEl.classList.toggle('show', !!d.ratio);
+
   lnpGroup.visible = true;
-  
+
   if (id === 'lnp') {
-    animateCamera(new THREE.Vector3(0, 1, 5), new THREE.Vector3(0, 0, 0));
+    smoothCam(new THREE.Vector3(0, 0.8, 5), new THREE.Vector3(0, 0, 0));
     return;
   }
-  
-  // Scale: comparison item grows AROUND the LNP
-  // ratio = how many times bigger the comparison is than LNP
-  const ratio = item.size / 20;
-  // Comparison visual radius in scene units
-  const compRadius = LNP_VISUAL_RADIUS * ratio;
-  
-  // Clone and scale comparison model
-  const model = compModels[id].clone(true);
-  // Each model is built at ~unit radius (1), scale to compRadius
-  model.scale.setScalar(compRadius);
-  
-  // Position: centered on same origin as LNP (LNP is inside/in-front)
-  model.position.set(0, 0, 0);
-  
-  // For manageable ratios (≤5), show both overlapping — LNP visibly smaller inside
-  // For larger ratios, we show a cross-section (cut the comparison so you can see inside)
+
+  const ratio = d.nm / 20;
+
   if (ratio <= 5) {
-    // Both fully visible, comparison transparent enough to see LNP inside
-    model.traverse(child => {
-      if (child.isMesh && child.material) {
-        child.material = child.material.clone();
-        child.material.transparent = true;
-        child.material.opacity = Math.min(child.material.opacity || 1, 0.35);
-        child.material.depthWrite = false;
-      }
-    });
+    // TRUE SCALE: comparison surrounds the LNP — both fully visible
+    const compR = LNP_R * ratio;
+    let model;
+    if (id === 'liposome') model = buildLiposome(compR);
+    else model = buildVirus(compR);
     compGroup.add(model);
-    // Camera pulls back to see comparison
-    const camDist = compRadius * 3;
-    animateCamera(new THREE.Vector3(0, compRadius * 0.3, camDist), new THREE.Vector3(0, 0, 0));
+    addGlowRing();
+    smoothCam(new THREE.Vector3(0, compR * 0.4, compR * 3.2), new THREE.Vector3(0, 0, 0));
   } else {
-    // Large ratio: show comparison as a partial shell / cross-section
-    // Clip the top hemisphere so you're looking "inside" and see LNP as a speck
+    // LARGE SCALE: show comparison at a fixed readable size (radius 3),
+    // keep LNP at center with glow ring. The visual: your LNP is this tiny bright thing,
+    // the comparison object fills the background.
+    const displayR = 3; // fixed visual size for comparison
+    let model;
+    if (id === 'rbc') model = buildRBC(displayR);
+    else if (id === 'hair') model = buildHair(displayR);
+    else model = buildSand(displayR);
+
+    // Offset comparison behind/around the LNP
+    model.position.set(0, 0, -displayR * 0.5);
+    // Make slightly transparent so LNP reads in front
     model.traverse(child => {
       if (child.isMesh && child.material) {
         child.material = child.material.clone();
         child.material.transparent = true;
-        child.material.opacity = Math.min(child.material.opacity || 1, 0.25);
-        child.material.side = THREE.DoubleSide;
-        child.material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), compRadius * 0.1)];
-        child.material.clipShadows = true;
+        child.material.opacity = (child.material.opacity || 1) * 0.45;
       }
     });
-    renderer.localClippingEnabled = true;
     compGroup.add(model);
-    
-    // Camera: looking from slightly above, angled down to see LNP in center
-    // Cap camera distance so it doesn't go insanely far
-    const camDist = Math.min(compRadius * 2.5, 80);
-    animateCamera(
-      new THREE.Vector3(0, camDist * 0.4, camDist * 0.8),
-      new THREE.Vector3(0, 0, 0),
-      1.2
-    );
+    addGlowRing();
+    smoothCam(new THREE.Vector3(0, displayR * 0.3, displayR * 2.8), new THREE.Vector3(0, 0, -displayR * 0.2));
   }
 }
 
-// --- EVENTS ---
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('click', () => showItem(card.dataset.id));
-});
+// ──── CAMERA ANIMATION ────
+let camAnim = null;
+function smoothCam(pos, target, dur = 0.9) {
+  const sp = camera.position.clone(), st = controls.target.clone();
+  const start = performance.now();
+  camAnim = { sp, st, ep: pos, et: target, start, dur };
+}
 
-// --- ANIMATE ---
-function animate() {
-  requestAnimationFrame(animate);
-  if (!animating) controls.update();
+// ──── EVENTS ────
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => show(c.dataset.id)));
+
+// ──── RENDER LOOP ────
+function tick() {
+  requestAnimationFrame(tick);
+
+  // Camera animation
+  if (camAnim) {
+    const t = Math.min((performance.now() - camAnim.start) / 1000 / camAnim.dur, 1);
+    const e = t < 0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+    camera.position.lerpVectors(camAnim.sp, camAnim.ep, e);
+    controls.target.lerpVectors(camAnim.st, camAnim.et, e);
+    if (t >= 1) camAnim = null;
+  }
+
+  controls.update();
+
+  // Keep glow ring facing camera
+  if (glowRing) glowRing.lookAt(camera.position);
+
   renderer.render(scene, camera);
 }
-animate();
+tick();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
