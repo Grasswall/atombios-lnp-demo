@@ -316,187 +316,200 @@
   // RBC: radius 350 (true 350×)
   // Sand: radius 1500 (capped from 25000× for render, still dramatic)
 
-  /* Blood-Brain Barrier — cylindrical vessel cross-section showing LNP threading through.
-     Uses a half-cut cylinder for the vessel wall + endothelial cell bumps on inner surface.
-     Shows blocked Doxil (too large) and threading LNP pathway. */
+  /* Blood-Brain Barrier — Scientific cross-section illustration
+     Two elongated endothelial cells with nuclei, tight junction zipper,
+     basement membrane, astrocyte end-feet, blocked Doxil + LNP path */
   function buildBBB() {
     var g = new THREE.Group();
 
-    // Vessel parameters
-    var vesselR     = 7.5;   // inner vessel radius
-    var wallThick   = 2.5;   // endothelial cell layer thickness
-    var vesselLen   = 18;    // length of vessel segment shown
-    var outerR      = vesselR + wallThick;
-
-    // ---- Vessel wall: use CylinderGeometry, cut in half (slice for cross-section view)
-    // We build the wall as outer cylinder - inner cylinder using a custom shape
-    // Outer wall
-    var outerGeo = new THREE.CylinderGeometry(outerR, outerR, vesselLen, 64, 4, true);
-    var innerGeo = new THREE.CylinderGeometry(vesselR, vesselR, vesselLen, 64, 4, true);
-    var wallMat  = new THREE.MeshStandardMaterial({
-      color: 0x7744aa,
-      roughness: 0.55,
-      metalness: 0.08,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.82
+    // --- Materials ---
+    var cellMat = new THREE.MeshPhysicalMaterial({
+      color: 0xd4a0c8, roughness: 0.55, metalness: 0.02,
+      clearcoat: 0.3, clearcoatRoughness: 0.4, transparent: true, opacity: 0.92
     });
-    // Render outer (clamp draw range to half-circle for cross-section effect)
-    // We rotate 90 deg on X so vessel runs left-right (X axis)
-    var outerMesh = new THREE.Mesh(outerGeo, wallMat);
-    outerMesh.rotation.z = Math.PI / 2;
-    g.add(outerMesh);
-
-    var innerMesh = new THREE.Mesh(innerGeo, new THREE.MeshStandardMaterial({
-      color: 0x5533aa,
-      roughness: 0.6,
-      metalness: 0.05,
-      side: THREE.BackSide,
-      transparent: true,
-      opacity: 0.6
-    }));
-    innerMesh.rotation.z = Math.PI / 2;
-    g.add(innerMesh);
-
-    // Endcap cross-sections (circles to show wall structure)
-    var endCapGeo = new THREE.RingGeometry(vesselR, outerR, 64);
-    var endCapMat = new THREE.MeshStandardMaterial({
-      color: 0x8855bb, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide
+    var nucleusMat = new THREE.MeshPhysicalMaterial({
+      color: 0x6b2d7b, roughness: 0.4, metalness: 0.05, clearcoat: 0.5
     });
-    var capL = new THREE.Mesh(endCapGeo, endCapMat);
-    capL.rotation.y = Math.PI / 2;
-    capL.position.x = -vesselLen / 2;
-    g.add(capL);
-    var capR = new THREE.Mesh(endCapGeo, endCapMat.clone());
-    capR.rotation.y = Math.PI / 2;
-    capR.position.x = vesselLen / 2;
-    g.add(capR);
-
-    // ---- Endothelial cell bumps on INNER surface
-    var cellBumpMat = new THREE.MeshStandardMaterial({
-      color: 0x9966cc, roughness: 0.45, metalness: 0.1,
-      transparent: true, opacity: 0.75
+    var tjMat = new THREE.MeshPhysicalMaterial({
+      color: 0xd4a017, roughness: 0.3, metalness: 0.3,
+      emissive: 0x332200, emissiveIntensity: 0.15
     });
-    var CELL_ROWS = 4, CELL_COLS = 12;
-    for (var row = 0; row < CELL_ROWS; row++) {
-      for (var col = 0; col < CELL_COLS; col++) {
-        var ang = (col / CELL_COLS) * Math.PI * 2;
-        var axPos = -vesselLen * 0.45 + (row / (CELL_ROWS - 1)) * vesselLen * 0.9;
-        var bumpR = vesselR - 0.1; // on inner surface
-        var bumpSx = 0.3 + 0.15 * Math.sin(col * 3 + row);
-        var bumpSy = 0.25 + 0.1 * Math.cos(col + row * 2.3);
-        var bump = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), cellBumpMat);
-        // orient along Y-axis of vessel (which is now X after rotation)
-        bump.position.set(axPos, bumpR * Math.sin(ang), bumpR * Math.cos(ang));
-        bump.scale.set(bumpSx, bumpSy + 0.1, bumpSy);
-        g.add(bump);
-      }
+    var basementMat = new THREE.MeshPhysicalMaterial({
+      color: 0x6688aa, roughness: 0.6, metalness: 0.05,
+      transparent: true, opacity: 0.5, side: THREE.DoubleSide
+    });
+    var astrocyteMat = new THREE.MeshPhysicalMaterial({
+      color: 0x2e9e8f, roughness: 0.5, metalness: 0.05,
+      clearcoat: 0.2, transparent: true, opacity: 0.85
+    });
+
+    // --- Helper: create elongated cell shape using ExtrudeGeometry ---
+    function makeCell(width, height, depth) {
+      var shape = new THREE.Shape();
+      var hw = width / 2, hh = height / 2;
+      var r = hh * 0.8; // rounded ends
+      shape.moveTo(-hw + r, -hh);
+      shape.lineTo(hw - r, -hh);
+      shape.quadraticCurveTo(hw, -hh, hw, -hh + r);
+      shape.lineTo(hw, hh - r);
+      shape.quadraticCurveTo(hw, hh, hw - r, hh);
+      shape.lineTo(-hw + r, hh);
+      shape.quadraticCurveTo(-hw, hh, -hw, hh - r);
+      shape.lineTo(-hw, -hh + r);
+      shape.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+      var extrudeSettings = { depth: depth, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 4 };
+      return new THREE.ExtrudeGeometry(shape, extrudeSettings);
     }
 
-    // ---- Tight junction: show a narrow gap at one position
-    // Gap is at top of vessel (y = vesselR), very narrow (~1.2 units = 20nm equivalent)
-    var gapY = vesselR + wallThick * 0.3;
-    var gapW = 1.2; // the ~20nm tight junction gap
-    var tjMat = new THREE.MeshStandardMaterial({
-      color: 0xcc9944, roughness: 0.4, metalness: 0.2,
-      emissive: 0x221100, emissiveIntensity: 0.2
-    });
-    // Tight junction proteins flanking the gap
-    for (var tj = 0; tj < 6; tj++) {
-      var tjX = -2.5 + tj;
-      var tjPL = new THREE.Mesh(new THREE.SphereGeometry(0.28, 7, 7), tjMat);
-      tjPL.position.set(tjX, gapY, -gapW * 0.5 - 0.3);
-      tjPL.scale.set(0.8, 0.55, 0.9);
-      g.add(tjPL);
-      var tjPR = new THREE.Mesh(new THREE.SphereGeometry(0.28, 7, 7), tjMat);
-      tjPR.position.set(tjX, gapY, gapW * 0.5 + 0.3);
-      tjPR.scale.set(0.8, 0.55, 0.9);
-      g.add(tjPR);
+    // --- Two endothelial cells side by side with gap ---
+    var cellW = 10, cellH = 1.8, cellD = 6;
+    var gapWidth = 1.2; // the tight junction gap
+
+    // Left cell
+    var leftCellGeo = makeCell(cellW, cellH, cellD);
+    var leftCell = new THREE.Mesh(leftCellGeo, cellMat);
+    leftCell.position.set(-(cellW / 2 + gapWidth / 2), 0, -cellD / 2);
+    g.add(leftCell);
+
+    // Right cell
+    var rightCellGeo = makeCell(cellW, cellH, cellD);
+    var rightCell = new THREE.Mesh(rightCellGeo, cellMat);
+    rightCell.position.set(cellW / 2 + gapWidth / 2, 0, -cellD / 2);
+    g.add(rightCell);
+
+    // --- Nuclei bulging into lumen (one per cell) ---
+    var nucGeo = new THREE.SphereGeometry(1.4, 20, 16);
+    var leftNuc = new THREE.Mesh(nucGeo, nucleusMat);
+    leftNuc.position.set(-(cellW * 0.5 + gapWidth / 2), 1.2, 0);
+    leftNuc.scale.set(1.8, 1.0, 1.3);
+    g.add(leftNuc);
+    var rightNuc = new THREE.Mesh(nucGeo, nucleusMat);
+    rightNuc.position.set(cellW * 0.5 + gapWidth / 2, 1.2, 0);
+    rightNuc.scale.set(1.8, 1.0, 1.3);
+    g.add(rightNuc);
+
+    // --- Tight junction zipper (interlocking protein strands) ---
+    var strandCount = 14;
+    for (var tj = 0; tj < strandCount; tj++) {
+      var zPos = -cellD / 2 + (tj / (strandCount - 1)) * cellD;
+      var side = (tj % 2 === 0) ? -1 : 1;
+      // Crossing capsule (cylinder + sphere ends)
+      var capCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 8), tjMat);
+      capCyl.position.set(side * 0.15, 0, zPos);
+      capCyl.rotation.z = side * 0.4;
+      capCyl.rotation.y = (tj * 0.3);
+      g.add(capCyl);
+      var capTop = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), tjMat);
+      capTop.position.copy(capCyl.position);
+      capTop.position.y += 0.45;
+      g.add(capTop);
+      var capBot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), tjMat);
+      capBot.position.copy(capCyl.position);
+      capBot.position.y -= 0.45;
+      g.add(capBot);
+      // Connecting node
+      var node = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), tjMat);
+      node.position.set(0, 0, zPos);
+      g.add(node);
+    }
+    // Vertical strands along the gap edges
+    for (var vs = 0; vs < 2; vs++) {
+      var xOff = vs === 0 ? -gapWidth * 0.4 : gapWidth * 0.4;
+      var strand = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cellD * 0.9, 6), tjMat);
+      strand.position.set(xOff, 0, 0);
+      strand.rotation.x = Math.PI / 2;
+      g.add(strand);
     }
 
-    // ---- Glow walls highlighting the gap
-    var glowMat = new THREE.MeshBasicMaterial({
-      color: 0x00e5ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide
-    });
-    var gapPanel = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.5), glowMat);
-    gapPanel.position.set(0, gapY, 0);
-    gapPanel.rotation.x = Math.PI / 2;
-    g.add(gapPanel);
+    // --- Basement membrane (thin sheet below cells) ---
+    var bmGeo = new THREE.PlaneGeometry(cellW * 2 + gapWidth + 4, cellD + 2);
+    var bm = new THREE.Mesh(bmGeo, basementMat);
+    bm.position.set(0, -cellH / 2 - 0.6, 0);
+    bm.rotation.x = -Math.PI / 2;
+    g.add(bm);
 
-    // ---- Blocked Doxil liposome (100nm = radius 2.5 in scene, scaled for visual)
-    var blockedMat = new THREE.MeshStandardMaterial({
-      color: 0xff3333, transparent: true, opacity: 0.45, roughness: 0.3
+    // --- Astrocyte end-feet (rounded bulbs wrapping below basement membrane) ---
+    var footPositions = [
+      [-7, -cellH / 2 - 1.5, -1.5], [-3, -cellH / 2 - 1.8, 1],
+      [2, -cellH / 2 - 1.5, -0.5], [6, -cellH / 2 - 1.7, 1.5],
+      [-5, -cellH / 2 - 1.6, 2], [4, -cellH / 2 - 1.5, -2],
+      [0, -cellH / 2 - 1.9, 2.5], [8, -cellH / 2 - 1.4, 0]
+    ];
+    for (var af = 0; af < footPositions.length; af++) {
+      var fp = footPositions[af];
+      var foot = new THREE.Mesh(new THREE.SphereGeometry(1.0 + Math.random() * 0.4, 12, 10), astrocyteMat);
+      foot.position.set(fp[0], fp[1], fp[2]);
+      foot.scale.set(1.2 + Math.random() * 0.3, 0.6, 1.0 + Math.random() * 0.3);
+      g.add(foot);
+    }
+
+    // --- Blocked Doxil sphere above (too large to fit through gap) ---
+    var blockedMat2 = new THREE.MeshPhysicalMaterial({
+      color: 0xff4444, transparent: true, opacity: 0.5, roughness: 0.2,
+      clearcoat: 0.6, transmission: 0.2
     });
-    var blockedSphere = new THREE.Mesh(new THREE.SphereGeometry(2.5, 24, 24), blockedMat);
-    // Hovering above the tight junction, attempting to cross
-    blockedSphere.position.set(0, gapY + 3.5, 0);
+    var blockedSphere = new THREE.Mesh(new THREE.SphereGeometry(2.5, 24, 24), blockedMat2);
+    blockedSphere.position.set(0, 4.5, 0);
     g.add(blockedSphere);
-    // X-mark bars
+    // X-mark
     var xMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
-    var xBar1 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.18, 0.18), xMat);
-    xBar1.position.set(0, gapY + 3.5, 2.7);
+    var xBar1 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.2), xMat);
+    xBar1.position.set(0, 4.5, 2.8);
     xBar1.rotation.x = Math.PI / 4;
     g.add(xBar1);
-    var xBar2 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.18, 0.18), xMat);
-    xBar2.position.set(0, gapY + 3.5, 2.7);
+    var xBar2 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 0.2), xMat);
+    xBar2.position.set(0, 4.5, 2.8);
     xBar2.rotation.x = -Math.PI / 4;
     g.add(xBar2);
+    // "100nm" label hint (small text plane not needed, the blocked size is obvious)
 
-    // ---- LNP path arrows through the gap (green dots trail)
-    var arrowMat = new THREE.MeshBasicMaterial({
-      color: 0x00ff88, transparent: true, opacity: 0.55
-    });
-    for (var a = 0; a < 9; a++) {
-      var aDot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), arrowMat);
-      aDot.position.set(a * 0.5 - 2.0, gapY, 0);
+    // --- Green arrow dots showing LNP path through gap ---
+    var arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.6 });
+    for (var a = 0; a < 10; a++) {
+      var t = a / 9;
+      var ay = 3.5 * (1 - t) + (-2.5) * t; // from above to below
+      var aDot = new THREE.Mesh(new THREE.SphereGeometry(0.12 + t * 0.05, 6, 6), arrowMat);
+      aDot.position.set(0, ay, 0);
       g.add(aDot);
     }
-    // Arrow head pointing forward
-    var arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 8), arrowMat);
-    arrowHead.rotation.z = -Math.PI / 2;
-    arrowHead.position.set(2.8, gapY, 0);
+    // Arrow head at bottom
+    var arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 8), arrowMat);
+    arrowHead.position.set(0, -3.0, 0);
+    arrowHead.rotation.x = Math.PI; // point down
     g.add(arrowHead);
 
-    // ---- Nuclei (one per endothelial cell layer)
-    var nucMat = new THREE.MeshStandardMaterial({ color: 0x2d1d44, roughness: 0.7, metalness: 0.05 });
-    [-4, 0, 4].forEach(function(xp) {
-      [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75].forEach(function(a2) {
-        var nr = outerR - wallThick * 0.55;
-        var nuc = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 10), nucMat);
-        nuc.position.set(xp, nr * Math.sin(a2), nr * Math.cos(a2));
-        nuc.scale.set(1, 0.65, 0.65);
-        g.add(nuc);
-      });
-    });
-
-    g.rotation.x = 0.2;
-    g.rotation.y = 0.3;
+    g.rotation.x = 0.15;
+    g.rotation.y = 0.2;
     return g;
   }
 
-  /* Doxil® liposome — 100nm = 5× LNP. TRUE SCALE radius 5 */
+  /* Doxil® liposome — 100nm = 5× LNP. TRUE SCALE radius 5
+     Improved with MeshPhysicalMaterial for glassy/pharmaceutical look */
   function buildDoxil() {
     var g = new THREE.Group();
     var R = 5;
 
-    // Outer bilayer shell
+    // Outer bilayer shell — glassy liposome look
     var shellGeo = new THREE.SphereGeometry(R, 64, 64);
-    var shellMat = new THREE.MeshStandardMaterial({
-      color: 0x4499dd, transparent: true, opacity: 0.12,
-      side: THREE.DoubleSide, roughness: 0.2, metalness: 0
+    var shellMat = new THREE.MeshPhysicalMaterial({
+      color: 0x4499dd, transparent: true, opacity: 0.18,
+      side: THREE.DoubleSide, roughness: 0.1, metalness: 0,
+      transmission: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.1,
+      ior: 1.4, thickness: 0.5
     });
     g.add(new THREE.Mesh(shellGeo, shellMat));
 
     // Inner bilayer
     var innerGeo = new THREE.SphereGeometry(R * 0.92, 48, 48);
-    var innerMat = new THREE.MeshStandardMaterial({
-      color: 0x3377aa, transparent: true, opacity: 0.06,
-      side: THREE.DoubleSide, roughness: 0.3, metalness: 0
+    var innerMat = new THREE.MeshPhysicalMaterial({
+      color: 0x3377aa, transparent: true, opacity: 0.08,
+      side: THREE.DoubleSide, roughness: 0.2, metalness: 0,
+      transmission: 0.2, clearcoat: 0.5
     });
     g.add(new THREE.Mesh(innerGeo, innerMat));
 
     // Lipid head groups (golden dots on outer surface)
-    var headMat = new THREE.MeshStandardMaterial({ color: 0xffcc55, roughness: 0.4, metalness: 0.1, emissive: 0x332200, emissiveIntensity: 0.1 });
+    var headMat = new THREE.MeshPhysicalMaterial({ color: 0xffcc55, roughness: 0.35, metalness: 0.15, emissive: 0x332200, emissiveIntensity: 0.1, clearcoat: 0.3 });
     for (var i = 0; i < 200; i++) {
       var phi = Math.acos(1 - 2 * (i + 0.5) / 200);
       var theta = Math.PI * (1 + Math.sqrt(5)) * i;
@@ -505,25 +518,25 @@
       g.add(dot);
     }
 
-    // PEG polymer brushes (wispy lines sticking out)
-    var pegMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.8, metalness: 0 });
-    for (var j = 0; j < 30; j++) {
-      var phi2 = Math.acos(1 - 2 * (j + 0.5) / 30);
+    // PEG polymer brushes (thicker, brighter blue)
+    var pegMat = new THREE.MeshPhysicalMaterial({ color: 0x66ccff, roughness: 0.6, metalness: 0, emissive: 0x113355, emissiveIntensity: 0.2 });
+    for (var j = 0; j < 40; j++) {
+      var phi2 = Math.acos(1 - 2 * (j + 0.5) / 40);
       var theta2 = Math.PI * (1 + Math.sqrt(5)) * j;
       var nx = Math.sin(phi2) * Math.cos(theta2), ny = Math.sin(phi2) * Math.sin(theta2), nz = Math.cos(phi2);
-      var peg = new THREE.Mesh(new THREE.CylinderGeometry(R*0.006, R*0.006, R*0.15, 4), pegMat);
-      peg.position.set(nx * (R + R*0.08), ny * (R + R*0.08), nz * (R + R*0.08));
+      var peg = new THREE.Mesh(new THREE.CylinderGeometry(R*0.012, R*0.012, R*0.18, 6), pegMat);
+      peg.position.set(nx * (R + R*0.09), ny * (R + R*0.09), nz * (R + R*0.09));
       peg.lookAt(nx * R * 3, ny * R * 3, nz * R * 3);
       peg.rotateX(Math.PI / 2);
       g.add(peg);
-      // Tip sphere
-      var tip = new THREE.Mesh(new THREE.SphereGeometry(R*0.015, 5, 5), pegMat);
-      tip.position.set(nx * (R + R*0.16), ny * (R + R*0.16), nz * (R + R*0.16));
+      // Tip sphere (bigger)
+      var tip = new THREE.Mesh(new THREE.SphereGeometry(R*0.022, 6, 6), pegMat);
+      tip.position.set(nx * (R + R*0.19), ny * (R + R*0.19), nz * (R + R*0.19));
       g.add(tip);
     }
 
     // Drug cargo crystals inside
-    var cargoMat = new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0x440000, emissiveIntensity: 0.3, roughness: 0.3, metalness: 0.2 });
+    var cargoMat = new THREE.MeshPhysicalMaterial({ color: 0xff3344, emissive: 0x440000, emissiveIntensity: 0.3, roughness: 0.25, metalness: 0.2, clearcoat: 0.4 });
     for (var k = 0; k < 20; k++) {
       var cr = 0.5 + (k / 20) * (R * 0.55);
       var cphi = Math.PI * (k * 0.618 + 0.3);
@@ -538,214 +551,286 @@
   }
 
   /* SARS-CoV-2 — 100nm = TRUE SCALE radius 5.
-     Icosahedral capsid core + spike glycoproteins on each vertex.
-     Spikes: cone stalk + sphere tip. Slowly rotates. */
+     Attempts to load PDB 6VSB spike GLTF as spike decorations.
+     Falls back to improved procedural virus with distinct colored parts. */
   function buildVirus() {
     var g = new THREE.Group();
     var R = 5;
 
-    // Lipid envelope — slightly bumpy icosphere
-    var envGeo = new THREE.IcosahedronGeometry(R * 0.78, 4);
-    var envPos = envGeo.attributes.position;
-    for (var i = 0; i < envPos.count; i++) {
-      var ex = envPos.getX(i), ey = envPos.getY(i), ez = envPos.getZ(i);
-      var bump = 1.0 + 0.025 * (Math.sin(ex * 9 + ey * 6) * Math.cos(ez * 8 + ex * 4));
-      envPos.setXYZ(i, ex * bump, ey * bump, ez * bump);
-    }
-    envGeo.computeVertexNormals();
-    var envMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapVirus, transparent: true, opacity: 0.55, side: THREE.DoubleSide
-    });
-    g.add(new THREE.Mesh(envGeo, envMat));
-
-    // Inner membrane (back-face darker)
-    var innerMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapVirus, transparent: true, opacity: 0.2, side: THREE.BackSide
-    });
-    g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(R * 0.79, 3), innerMat));
-
-    // Icosahedral capsid pattern: use an IcosahedronGeometry detail=1 (12 vertices + 42 face centers)
-    // Place spike proteins: cone base + bulbous RBD head
-    var spikeStalkMat = new THREE.MeshMatcapMaterial({ matcap: matcapVirus });
-    var spikeHeadMat  = new THREE.MeshMatcapMaterial({ matcap: matcapVirus });
-
-    // Get icosahedral vertex positions (detail=1 gives 42 vertices; detail=0 gives 12)
-    // We place spikes on all vertices of a detail=2 icosahedron for dense coverage
-    var icoRef = new THREE.IcosahedronGeometry(R * 0.78, 2);
-    var icoPos = icoRef.attributes.position;
-    // Deduplicate vertices (merge very close ones)
-    var seen = [];
-    var spikePositions = [];
-    for (var vi = 0; vi < icoPos.count; vi++) {
-      var vx = icoPos.getX(vi), vy = icoPos.getY(vi), vz = icoPos.getZ(vi);
-      // Normalize to surface
-      var vLen = Math.sqrt(vx*vx + vy*vy + vz*vz);
-      var nx = vx/vLen * R * 0.78, ny = vy/vLen * R * 0.78, nz = vz/vLen * R * 0.78;
-      // Check for near-duplicate
-      var dup = false;
-      for (var si = 0; si < seen.length; si++) {
-        var dx = seen[si].x - nx, dy = seen[si].y - ny, dz = seen[si].z - nz;
-        if (dx*dx + dy*dy + dz*dz < 0.001) { dup = true; break; }
+    // --- Procedural virus (used as fallback or primary) ---
+    function buildProceduralVirus() {
+      // Lipid envelope — organic noise-displaced sphere (not icosahedron)
+      var envGeo = new THREE.SphereGeometry(R * 0.78, 48, 48);
+      var envPos = envGeo.attributes.position;
+      for (var i = 0; i < envPos.count; i++) {
+        var ex = envPos.getX(i), ey = envPos.getY(i), ez = envPos.getZ(i);
+        var len = Math.sqrt(ex*ex + ey*ey + ez*ez);
+        var nx = ex/len, ny = ey/len, nz = ez/len;
+        // Organic noise
+        var noise = Math.sin(nx*5.3 + ny*3.7) * Math.cos(nz*4.1 + nx*2.8) * 0.03
+                  + Math.sin(nx*11 + nz*7) * 0.015
+                  + Math.sin(ny*8.5 - nx*6.2 + nz*4) * 0.01;
+        var bump = 1.0 + noise;
+        envPos.setXYZ(i, ex * bump, ey * bump, ez * bump);
       }
-      if (!dup) {
-        seen.push({x: nx, y: ny, z: nz});
-        spikePositions.push(nx, ny, nz);
+      envGeo.computeVertexNormals();
+      var envMat = new THREE.MeshPhysicalMaterial({
+        color: 0x8ba83c, roughness: 0.45, metalness: 0.05,
+        transparent: true, opacity: 0.6, side: THREE.DoubleSide,
+        clearcoat: 0.3, transmission: 0.15
+      });
+      g.add(new THREE.Mesh(envGeo, envMat));
+
+      // Inner membrane
+      var innerMat = new THREE.MeshPhysicalMaterial({
+        color: 0x6b8a2a, transparent: true, opacity: 0.25, side: THREE.BackSide,
+        roughness: 0.5
+      });
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(R * 0.76, 32, 32), innerMat));
+
+      // --- Spike proteins with DISTINCT colors ---
+      var stalkMat = new THREE.MeshPhysicalMaterial({
+        color: 0x888888, roughness: 0.5, metalness: 0.1
+      });
+      var headMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe85530, roughness: 0.35, metalness: 0.1,
+        emissive: 0x331100, emissiveIntensity: 0.15, clearcoat: 0.4
+      });
+
+      // Place ~24 spikes using fibonacci sphere distribution
+      var spikeCount = 24;
+      for (var sp = 0; sp < spikeCount; sp++) {
+        var spPhi = Math.acos(1 - 2 * (sp + 0.5) / spikeCount);
+        var spTheta = Math.PI * (1 + Math.sqrt(5)) * sp;
+        var ux = Math.sin(spPhi) * Math.cos(spTheta);
+        var uy = Math.sin(spPhi) * Math.sin(spTheta);
+        var uz = Math.cos(spPhi);
+
+        // Stalk — longer cylinder
+        var stalkLen = R * 0.35;
+        var stalkGeo = new THREE.CylinderGeometry(R*0.02, R*0.025, stalkLen, 8, 1);
+        var stalk = new THREE.Mesh(stalkGeo, stalkMat);
+        var mid = R * 0.78 + stalkLen * 0.5;
+        stalk.position.set(ux * mid, uy * mid, uz * mid);
+        var dir = new THREE.Vector3(ux, uy, uz);
+        stalk.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        g.add(stalk);
+
+        // Trimeric head (3 merged spheres in clover pattern)
+        var headDist = R * 0.78 + stalkLen;
+        var headGroup = new THREE.Group();
+        headGroup.position.set(ux * headDist, uy * headDist, uz * headDist);
+        // Orient head outward
+        headGroup.lookAt(ux * headDist * 2, uy * headDist * 2, uz * headDist * 2);
+
+        var cloverR = R * 0.045;
+        for (var lobe = 0; lobe < 3; lobe++) {
+          var ang = (lobe / 3) * Math.PI * 2;
+          var lobeMesh = new THREE.Mesh(new THREE.SphereGeometry(R * 0.055, 10, 8), headMat);
+          lobeMesh.position.set(Math.cos(ang) * cloverR, Math.sin(ang) * cloverR, R * 0.03);
+          headGroup.add(lobeMesh);
+        }
+        // Center connector
+        var centerHead = new THREE.Mesh(new THREE.SphereGeometry(R * 0.04, 8, 6), headMat);
+        centerHead.position.set(0, 0, R * 0.02);
+        headGroup.add(centerHead);
+        g.add(headGroup);
       }
-    }
-    icoRef.dispose();
 
-    var stalkLen = R * 0.30;
-    var headR    = R * 0.065;
-    var rbdR     = R * 0.042;
-
-    for (var sp = 0; sp < spikePositions.length; sp += 3) {
-      var bx = spikePositions[sp], by = spikePositions[sp+1], bz = spikePositions[sp+2];
-      var blen = Math.sqrt(bx*bx + by*by + bz*bz);
-      var ux = bx/blen, uy = by/blen, uz = bz/blen; // unit normal
-
-      // Stalk: cone pointing outward
-      var stalkGeo = new THREE.ConeGeometry(R*0.018, stalkLen, 6, 1);
-      var stalk = new THREE.Mesh(stalkGeo, spikeStalkMat);
-      // Position center of stalk above surface
-      var mid = R * 0.78 + stalkLen * 0.5;
-      stalk.position.set(ux * mid, uy * mid, uz * mid);
-      // Orient cone outward: cone default axis is Y
-      var dir = new THREE.Vector3(ux, uy, uz);
-      var up  = new THREE.Vector3(0, 1, 0);
-      stalk.quaternion.setFromUnitVectors(up, dir);
-      g.add(stalk);
-
-      // Head bulb (S2 trimer head)
-      var headDist = R * 0.78 + stalkLen + headR * 0.5;
-      var head = new THREE.Mesh(new THREE.SphereGeometry(headR, 8, 8), spikeHeadMat);
-      head.position.set(ux * headDist, uy * headDist, uz * headDist);
-      g.add(head);
-
-      // RBD lobes: 3 small spheres offset around the head (trimer)
-      var perpA = new THREE.Vector3(ux, uy, uz);
-      var arbAxis = Math.abs(ux) < 0.9 ? new THREE.Vector3(1,0,0) : new THREE.Vector3(0,1,0);
-      var tangA = new THREE.Vector3().crossVectors(perpA, arbAxis).normalize();
-      var tangB = new THREE.Vector3().crossVectors(perpA, tangA).normalize();
-      for (var lobe = 0; lobe < 3; lobe++) {
-        var ang = (lobe / 3) * Math.PI * 2;
-        var lobeDist = headR * 1.1;
-        var lx = ux * (headDist + headR * 0.5)
-                 + tangA.x * Math.cos(ang) * lobeDist
-                 + tangB.x * Math.sin(ang) * lobeDist;
-        var ly = uy * (headDist + headR * 0.5)
-                 + tangA.y * Math.cos(ang) * lobeDist
-                 + tangB.y * Math.sin(ang) * lobeDist;
-        var lz = uz * (headDist + headR * 0.5)
-                 + tangA.z * Math.cos(ang) * lobeDist
-                 + tangB.z * Math.sin(ang) * lobeDist;
-        var lobeM = new THREE.Mesh(new THREE.SphereGeometry(rbdR, 6, 6), spikeHeadMat);
-        lobeM.position.set(lx, ly, lz);
-        g.add(lobeM);
+      // --- M-protein matrix layer (smaller dark blue/purple bumps between spikes) ---
+      var mProteinMat = new THREE.MeshPhysicalMaterial({
+        color: 0x3b2d6b, roughness: 0.5, metalness: 0.15
+      });
+      var mCount = 50;
+      for (var m = 0; m < mCount; m++) {
+        var mPhi = Math.acos(1 - 2 * (m + 0.5) / mCount);
+        var mTheta = Math.PI * (1 + Math.sqrt(5)) * (m + 100);
+        var mx = Math.sin(mPhi) * Math.cos(mTheta);
+        var my = Math.sin(mPhi) * Math.sin(mTheta);
+        var mz = Math.cos(mPhi);
+        var mBump = new THREE.Mesh(new THREE.SphereGeometry(R * 0.025, 6, 5), mProteinMat);
+        mBump.position.set(mx * R * 0.80, my * R * 0.80, mz * R * 0.80);
+        g.add(mBump);
       }
     }
 
-    // E-protein / M-protein surface bumps
-    var smallMat = new THREE.MeshMatcapMaterial({ matcap: matcapVirus, transparent: true, opacity: 0.6 });
-    for (var e = 0; e < 25; e++) {
-      var ephi = Math.acos(1 - 2 * (e + 0.5) / 25);
-      var eth  = Math.PI * (1 + Math.sqrt(5)) * (e + 200);
-      var enx  = Math.sin(ephi) * Math.cos(eth);
-      var eny  = Math.sin(ephi) * Math.sin(eth);
-      var enz  = Math.cos(ephi);
-      var eDot = new THREE.Mesh(new THREE.SphereGeometry(R * 0.022, 5, 5), smallMat);
-      eDot.position.set(enx * R * 0.80, eny * R * 0.80, enz * R * 0.80);
-      g.add(eDot);
+    // --- Attempt GLTF load for spike protein (likely fails due to CORS on .bin) ---
+    try {
+      var gltfLoader = new THREE.GLTFLoader();
+      gltfLoader.setPath('https://raw.githubusercontent.com/urish/coronavirus-3d/master/model/');
+      gltfLoader.load('PDB-6VSB-surf.gltf', function(gltf) {
+        // Success: use spike model as decoration on viral envelope
+        var spikeModel = gltf.scene;
+        // Scale spike to appropriate size relative to virus
+        var sBox = new THREE.Box3().setFromObject(spikeModel);
+        var sSize = new THREE.Vector3(); sBox.getSize(sSize);
+        var sScale = (R * 0.4) / Math.max(sSize.x, sSize.y, sSize.z);
+        spikeModel.scale.setScalar(sScale);
+        // Apply coral/red-orange translucent material
+        spikeModel.traverse(function(child) {
+          if (child.isMesh) {
+            child.material = new THREE.MeshPhysicalMaterial({
+              color: 0xe8604a, roughness: 0.35, metalness: 0.05,
+              transparent: true, opacity: 0.8, clearcoat: 0.6, transmission: 0.1
+            });
+          }
+        });
+        // Place ~20 copies on the viral surface
+        var nSpikes = 20;
+        for (var si = 0; si < nSpikes; si++) {
+          var sPhi = Math.acos(1 - 2 * (si + 0.5) / nSpikes);
+          var sTheta = Math.PI * (1 + Math.sqrt(5)) * si;
+          var sx = Math.sin(sPhi) * Math.cos(sTheta);
+          var sy = Math.sin(sPhi) * Math.sin(sTheta);
+          var sz = Math.cos(sPhi);
+          var clone = spikeModel.clone();
+          clone.position.set(sx * R * 0.78, sy * R * 0.78, sz * R * 0.78);
+          clone.lookAt(sx * R * 2, sy * R * 2, sz * R * 2);
+          g.add(clone);
+        }
+      }, undefined, function(err) {
+        // GLTF load failed (expected due to CORS on .bin) — use procedural
+        console.warn('Virus GLTF load failed (expected), using procedural:', err);
+        buildProceduralVirus();
+      });
+    } catch(e) {
+      buildProceduralVirus();
     }
+
+    // Always build procedural as base (GLTF spikes would ADD to it if loaded)
+    buildProceduralVirus();
 
     return g;
   }
 
   /* Red Blood Cell — 7000nm = 350× LNP. TRUE SCALE radius 350
-     Uses Evans-Fung biconcave parametric equation:
-     z(r) = D0*sqrt(1-(2r/D0)^2) * (C0 + C1*(2r/D0)^2 + C2*(2r/D0)^4)
-     D0=7.82, C0=0.0137, C1=0.3091, C2=-0.2987 (Fung 1993)
-     All units in micrometers, then scaled to Three.js units.
-     Demo radius = 350 (350x LNP scale) */
+     Proper full biconcave disc using parametric BufferGeometry.
+     Evans-Fung equation for z(r), builds closed mesh with top+bottom surfaces. */
   function buildRBC() {
     var g = new THREE.Group();
-    var R = 350; // radius in demo units
+    var R = 350;
 
-    // Evans-Fung parameters (normalized to R)
-    // D0 = 7.82 um -> normalised to R in demo space
-    // We generate a LatheGeometry profile: r from 0 to R, z = height at that radius
-    var RINGS = 128; // radial steps for smooth profile
-    var D0 = 7.82;   // um (physical diameter)
+    // Evans-Fung parameters
+    var D0 = 7.82; // um diameter
     var C0 = 0.0137, C1 = 0.3091, C2 = -0.2987;
 
-    // Build half-profile points for LatheGeometry: (radius, height)
-    // LatheGeometry takes 2D points [x, y] where x=radius, y=height, rotated around Y axis
-    var profilePoints = [];
-    for (var i = 0; i <= RINGS; i++) {
-      var rPhys = (i / RINGS) * (D0 / 2); // physical radius 0 to D0/2
-      var rNorm = 2 * rPhys / D0;          // normalized: 0..1 (where 1 = edge)
-      // Real parametric equation from Evans & Fung 1972
-      var zPhys = D0 * Math.sqrt(Math.max(0, 1 - rNorm * rNorm))
-                    * (C0 + C1 * rNorm * rNorm + C2 * Math.pow(rNorm, 4));
-      // Scale to demo units
-      var rDemo = (rPhys / (D0 / 2)) * R;  // 0..R
-      var zDemo = (zPhys / D0) * R * 2;    // height scaled proportionally
-      profilePoints.push(new THREE.Vector2(rDemo, zDemo));
+    // Parametric surface: for each (theta, r) compute top z(r) and bottom -z(r)
+    var radialSteps = 80;
+    var angularSteps = 96;
+
+    // Compute z at normalized radius (0..1)
+    function zAtR(rNorm) {
+      var r2 = rNorm * rNorm;
+      var r4 = r2 * r2;
+      var sq = Math.sqrt(Math.max(0, 1 - r2));
+      return D0 * sq * (C0 + C1 * r2 + C2 * r4);
     }
-    // Close to center at top for closed disc
-    profilePoints.unshift(new THREE.Vector2(0, profilePoints[0].y));
 
-    var latheGeo = new THREE.LatheGeometry(profilePoints, 128);
-    latheGeo.computeVertexNormals();
+    // Build BufferGeometry
+    var positions = [];
+    var normals = [];
+    var indices = [];
 
-    var rbcMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapBlood,
-      side: THREE.FrontSide,
-      transparent: true,
-      opacity: 0.9
+    // Generate vertices: top ring + bottom ring for each radial step
+    // Layout: for each radial step r (0..radialSteps), for each angular step a (0..angularSteps-1):
+    //   top vertex index: r * angularSteps * 2 + a * 2
+    //   bottom vertex index: r * angularSteps * 2 + a * 2 + 1
+    for (var ri = 0; ri <= radialSteps; ri++) {
+      var rNorm = ri / radialSteps; // 0 to 1
+      var rDemo = rNorm * R; // demo units radius
+      var zPhys = zAtR(rNorm);
+      var zDemo = (zPhys / D0) * R * 2; // scale z proportionally
+
+      for (var ai = 0; ai < angularSteps; ai++) {
+        var theta = (ai / angularSteps) * Math.PI * 2;
+        var x = rDemo * Math.cos(theta);
+        var z2 = rDemo * Math.sin(theta);
+
+        // Top vertex
+        positions.push(x, zDemo, z2);
+        // Bottom vertex
+        positions.push(x, -zDemo, z2);
+      }
+    }
+
+    // Generate faces connecting adjacent rings
+    for (var ri2 = 0; ri2 < radialSteps; ri2++) {
+      for (var ai2 = 0; ai2 < angularSteps; ai2++) {
+        var nextA = (ai2 + 1) % angularSteps;
+        var currBase = ri2 * angularSteps * 2;
+        var nextBase = (ri2 + 1) * angularSteps * 2;
+
+        var tl = currBase + ai2 * 2;       // top-left current ring
+        var tr = nextBase + ai2 * 2;       // top-left next ring
+        var tlNext = currBase + nextA * 2; // top next-angular current ring
+        var trNext = nextBase + nextA * 2; // top next-angular next ring
+
+        var bl = tl + 1;      // bottom versions
+        var br = tr + 1;
+        var blNext = tlNext + 1;
+        var brNext = trNext + 1;
+
+        // Top surface faces (wind counterclockwise for outward normal)
+        indices.push(tl, trNext, tr);
+        indices.push(tl, tlNext, trNext);
+
+        // Bottom surface faces (wind clockwise = outward downward)
+        indices.push(bl, br, brNext);
+        indices.push(bl, brNext, blNext);
+      }
+    }
+
+    // Edge rim: connect top and bottom at outermost ring
+    var outerBase = radialSteps * angularSteps * 2;
+    for (var ei = 0; ei < angularSteps; ei++) {
+      var nextE = (ei + 1) % angularSteps;
+      var eT = outerBase + ei * 2;
+      var eB = eT + 1;
+      var eTn = outerBase + nextE * 2;
+      var eBn = eTn + 1;
+      indices.push(eT, eBn, eB);
+      indices.push(eT, eTn, eBn);
+    }
+
+    var geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geom.setIndex(indices);
+    geom.computeVertexNormals();
+
+    // Material: deep crimson with subsurface look
+    var rbcMat = new THREE.MeshPhysicalMaterial({
+      color: 0x8b1a1a, roughness: 0.4, metalness: 0.05,
+      clearcoat: 0.6, clearcoatRoughness: 0.3,
+      transmission: 0.08, thickness: 2.0,
+      side: THREE.DoubleSide
     });
-    var rbcMatBack = new THREE.MeshMatcapMaterial({
-      matcap: matcapBlood,
-      side: THREE.BackSide,
-      transparent: true,
-      opacity: 0.85
-    });
+    var rbcMesh = new THREE.Mesh(geom, rbcMat);
+    g.add(rbcMesh);
 
-    // Top surface
-    var topMesh = new THREE.Mesh(latheGeo, rbcMat);
-    g.add(topMesh);
-    // Bottom surface (mirrored)
-    var botMesh = new THREE.Mesh(latheGeo, rbcMatBack);
-    botMesh.scale.y = -1;
-    g.add(botMesh);
-    // Inner faces for thickness
-    var innerMesh = new THREE.Mesh(latheGeo, new THREE.MeshMatcapMaterial({
-      matcap: matcapBlood, side: THREE.DoubleSide, transparent: true, opacity: 0.4
-    }));
-    innerMesh.scale.set(0.97, 0.97, 0.97);
-    g.add(innerMesh);
+    // Internal hemoglobin hint (inner fill very low opacity)
+    var innerFill = new THREE.Mesh(
+      new THREE.SphereGeometry(R * 0.6, 24, 24),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x4a0808, transparent: true, opacity: 0.08,
+        roughness: 0.8, side: THREE.DoubleSide
+      })
+    );
+    innerFill.scale.set(1, 0.3, 1);
+    g.add(innerFill);
 
-    // Rim torus for edge definition
-    var edgeR = R * 0.98;
-    var tubeR = R * 0.06;
-    var rimGeo = new THREE.TorusGeometry(edgeR, tubeR, 20, 128);
-    var rimMat = new THREE.MeshMatcapMaterial({ matcap: matcapBlood, transparent: true, opacity: 0.7 });
-    var rim = new THREE.Mesh(rimGeo, rimMat);
-    rim.rotation.x = Math.PI / 2;
-    g.add(rim);
-
-    g.rotation.x = 0.35;
+    // Tilt toward viewer so biconcave dimple is visible
+    g.rotation.x = 0.3;
     return g;
   }
 
   /* Grain of Sand — 500,000nm = 25,000× LNP. Radius 1500 (render limit)
-     Uses noise-displaced IcosahedronGeometry for organic, irregular grain shape. */
+     Noise-displaced icosahedron with MeshPhysicalMaterial + flat shading for crystalline quartz look. */
   function buildSand() {
     var g = new THREE.Group();
     var R = 1500;
 
     // Multi-octave noise displacement for irregular quartz grain
     function smoothNoise(x, y, z) {
-      // Multi-frequency sinusoidal noise (cheap but organic-looking)
       return Math.sin(x * 3.7 + y * 2.3 + z * 1.9) * 0.50
            + Math.sin(x * 7.1 - z * 5.3 + y * 0.8) * 0.25
            + Math.sin(y * 8.9 + z * 4.7 - x * 2.1) * 0.15
@@ -753,27 +838,27 @@
            + Math.sin(x * 23.1 - z * 18.5 + y * 15.3) * 0.03;
     }
 
-    // Main grain body: detail=3 icosahedron for good resolution
+    // Main grain body
     var mainGeo = new THREE.IcosahedronGeometry(R, 3);
     var mainPos = mainGeo.attributes.position;
     for (var i = 0; i < mainPos.count; i++) {
       var x = mainPos.getX(i), y = mainPos.getY(i), z = mainPos.getZ(i);
       var len = Math.sqrt(x*x + y*y + z*z);
       var nx2 = x/len, ny2 = y/len, nz2 = z/len;
-      // Displacement with multiple scales for realistic grain texture
       var disp = smoothNoise(nx2 * 2.5, ny2 * 2.5, nz2 * 2.5);
-      var globalScale = 1 + disp * 0.20; // ±20% displacement
-      // Also squish slightly on one axis for angular grain shape
+      var globalScale = 1 + disp * 0.20;
       mainPos.setXYZ(i, x * globalScale * 0.95, y * globalScale * 0.88, z * globalScale);
     }
     mainGeo.computeVertexNormals();
 
-    var mainMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapSand, flatShading: true, transparent: true, opacity: 0.88
+    var mainMat = new THREE.MeshPhysicalMaterial({
+      color: 0xc9a456, roughness: 0.6, metalness: 0.05,
+      flatShading: true, transparent: true, opacity: 0.9,
+      clearcoat: 0.2, clearcoatRoughness: 0.5
     });
     g.add(new THREE.Mesh(mainGeo, mainMat));
 
-    // Secondary surface detail: smaller displaced icosahedron as surface variation
+    // Secondary surface detail layer
     var detailGeo = new THREE.IcosahedronGeometry(R * 0.92, 2);
     var detailPos = detailGeo.attributes.position;
     for (var d = 0; d < detailPos.count; d++) {
@@ -785,12 +870,14 @@
       detailPos.setXYZ(d, dx * dScale, dy * dScale * 0.82, dz * dScale);
     }
     detailGeo.computeVertexNormals();
-    var detailMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapSand, flatShading: true, transparent: true, opacity: 0.35
+    var detailMat = new THREE.MeshPhysicalMaterial({
+      color: 0xb8944a, roughness: 0.65, metalness: 0.03,
+      flatShading: true, transparent: true, opacity: 0.35,
+      clearcoat: 0.1
     });
     g.add(new THREE.Mesh(detailGeo, detailMat));
 
-    // Quartz crystal inclusion (glassy internal structure)
+    // Quartz crystal inclusion
     var crystalGeo = new THREE.IcosahedronGeometry(R * 0.38, 1);
     var crystalPos = crystalGeo.attributes.position;
     for (var c = 0; c < crystalPos.count; c++) {
@@ -800,16 +887,19 @@
       crystalPos.setXYZ(c, cx * cScale, cy * cScale * 0.75, cz * cScale);
     }
     crystalGeo.computeVertexNormals();
-    var crystalMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapSand, flatShading: true, transparent: true, opacity: 0.28
+    var crystalMat = new THREE.MeshPhysicalMaterial({
+      color: 0xd4b87a, roughness: 0.4, metalness: 0.08,
+      flatShading: true, transparent: true, opacity: 0.3,
+      transmission: 0.15, clearcoat: 0.4
     });
     var crystal = new THREE.Mesh(crystalGeo, crystalMat);
     crystal.position.set(R * 0.18, R * 0.08, -R * 0.12);
     g.add(crystal);
 
-    // Conchoidal fracture pits on surface
-    var pitMat = new THREE.MeshMatcapMaterial({
-      matcap: matcapSand, transparent: true, opacity: 0.22
+    // Conchoidal fracture pits
+    var pitMat = new THREE.MeshPhysicalMaterial({
+      color: 0xa0803a, roughness: 0.7, metalness: 0.02,
+      flatShading: true, transparent: true, opacity: 0.25
     });
     for (var p = 0; p < 10; p++) {
       var pphi = Math.acos(1 - 2 * (p + 0.5) / 10);
